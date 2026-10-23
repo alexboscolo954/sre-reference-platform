@@ -1,0 +1,15 @@
+# Gateway API needs kube-proxy replacement, so Cilium talks to the API server
+# directly instead of through the (absent) kube-proxy ClusterIP.
+kubeProxyReplacement: true
+k8sServiceHost: sre-platform-control-plane
+k8sServicePort: 6443
+ipam:
+  mode: kubernetes
+gatewayAPI:
+  enabled: true
+  # Envoy listens on each node's own network; kind maps the control plane's
+  # :8080 to macOS. No LoadBalancer Services, no cloud-provider-kind.
+  hostNetwork:
+    enabled: true
+operator:
+  replicas: 1
