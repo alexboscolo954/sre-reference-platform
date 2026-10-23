@@ -1,0 +1,16 @@
+# secrets — the age key lives outside the repo; never commit decrypted files
+*.agekey
+keys.txt
+*.dec.yaml
+.env
+
+# kube / cloud state
+kubeconfig*
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# build / OS
+bin/
+dist/
+.DS_Store
