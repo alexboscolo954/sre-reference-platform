@@ -8,7 +8,10 @@ URL         := http://localhost:8080
 export KUBECONFIG := $(CURDIR)/kubeconfig
 export KIND_EXPERIMENTAL_DOCKER_NETWORK := $(CLUSTER)
 
-.PHONY: up down smoke url
+ARGOCD      := 10.11.1
+AGE_KEY     := $(HOME)/.config/sops/age/keys.txt
+
+.PHONY: up gitops down smoke url
 
 up:
 	kind create cluster --config $(KIND_DIR)/kind-config.yaml
@@ -16,6 +19,14 @@ up:
 	helm upgrade --install cilium cilium --repo https://helm.cilium.io --version $(CILIUM) \
 		-n kube-system -f $(KIND_DIR)/cilium-values.yaml
 	cilium status --wait --wait-duration 15m
+	$(MAKE) gitops
+
+gitops:
+	kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+	kubectl -n argocd create secret generic sops-age --from-file=keys.txt=$(AGE_KEY) --dry-run=client -o yaml | kubectl apply -f -
+	helm upgrade --install argo-cd argo-cd --repo https://argoproj.github.io/argo-helm --version $(ARGOCD) \
+		-n argocd -f gitops/argocd-values.yaml --wait
+	kubectl apply -f gitops/root-app.yaml
 
 down:
 	kind delete cluster --name $(CLUSTER)
