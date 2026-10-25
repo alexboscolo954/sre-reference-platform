@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: demo
+    namespace: secrets-demo
+stringData:
+    greeting: ENC[AES256_GCM,data:mXRY3OFTaTac085ZROqQ,iv:lznSowh6PbCpyFTgv3yQ3AibLwjzeW3Skso/wysjx7I=,tag:uabYHbbNGBmi0MSjMgDqlA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSArVEMzTHBYb3ZjNUYwbEhW
+            QjNjOUpndnhHL0FPVlVpUmxkcWJ5Z1Yrb3dRCnMyMGpzWUtYNTUxS3JBZVJ0QUN0
+            dkNvLzk0WVROZ1piMXh0cWQ5NThNcEkKLS0tIG45TU5xRkF6em04U0xtakl1c1pm
+            NEpRdFMyaC9OeCtpT1RCaWllTUdkOU0Kl/EGO1XjHNrSdh6XF8RIEMum7I15jM+d
+            Ti4ijaQmNr9OTCOBX7stiPSBpMjbtUpyL1uwkCqmWhs2K/0u1VRKPw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1zv9vp8wk3vlq8cts5tk9h6dxlryypgxze5mpjly7acuwd6wqq5wqpa7gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-25T23:19:22Z"
+    mac: ENC[AES256_GCM,data:KSKRIPkn9UEMsIK3ZmHOvd2aVuQl7l+pNIgj6hNjA5LJJGDX5BjshE+mp0H2uqKt5D3u00MkvLIJBDWfVpaSk+kteJkqDvMaNrJRaY+0N+uP0oHrx+B8b0B5TwwtjduHuPIfl59HLrH4M6WbOxXxnAKUDcvP8bnS59jKfoiFlxc=,iv:h5RdoBZOeOnUKMq2K1hyTGdfJEONieySBHhNt7fMQr8=,tag:G0TsoKv8r9LUsP48uPOwyw==,type:str]
+    version: 3.13.3
