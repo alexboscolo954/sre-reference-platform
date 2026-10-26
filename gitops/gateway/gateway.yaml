@@ -1,0 +1,15 @@
+# The one Gateway for the whole platform: Cilium host-network mode owns host port 8080,
+# so every route (shop now, previews later) attaches here by hostname.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shared
+  namespace: gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 8080
+      allowedRoutes:
+        namespaces: {from: All}

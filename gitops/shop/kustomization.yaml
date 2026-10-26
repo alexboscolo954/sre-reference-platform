@@ -1,0 +1,11 @@
+resources:
+  - postgres.yaml
+  - valkey.yaml
+  - checkout.yaml
+  - storefront.yaml
+  - httproute.yaml
+images:
+  - name: ghcr.io/alexboscolo954/storefront
+    newTag: sha-b90aabc88f583ccba74864a25e0c06eb636a50a6
+  - name: ghcr.io/alexboscolo954/checkout
+    newTag: sha-b90aabc88f583ccba74864a25e0c06eb636a50a6

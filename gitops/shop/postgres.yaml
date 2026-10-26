@@ -1,0 +1,17 @@
+# CNPG creates the shop-db-app secret (key "uri") itself, so no SOPS secret is needed.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: shop-db
+  namespace: shop
+spec:
+  instances: 3
+  storage:
+    size: 1Gi
+  resources:
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 512Mi}
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required # one instance per worker node
+    topologyKey: kubernetes.io/hostname
