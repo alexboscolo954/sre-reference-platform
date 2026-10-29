@@ -14,7 +14,7 @@ spec:
       containers:
         - name: checkout
           image: ghcr.io/alexboscolo954/checkout
-          ports: [{containerPort: 8080}]
+          ports: [{containerPort: 8080}, {name: metrics, containerPort: 9090}]
           env:
             - {name: LATENCY_MS, value: "0"}
             - {name: ERROR_RATE, value: "0"}
