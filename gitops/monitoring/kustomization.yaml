@@ -1,0 +1,4 @@
+resources:
+  - httproute.yaml
+generators:
+  - secret-generator.yaml

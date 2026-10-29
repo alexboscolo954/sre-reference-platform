@@ -11,6 +11,7 @@ import (
 	"github.com/valkey-io/valkey-go"
 
 	"github.com/alexboscolo954/sre-reference-platform/apps/internal/fault"
+	"github.com/alexboscolo954/sre-reference-platform/apps/internal/metrics"
 )
 
 func main() {
@@ -39,7 +40,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		}
 	})
-	mux.HandleFunc("POST /checkout", func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /checkout", metrics.Wrap("POST /checkout", fault.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var id int64
 		if err := db.QueryRow(r.Context(), `INSERT INTO orders DEFAULT VALUES RETURNING id`).Scan(&id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -51,7 +52,8 @@ func main() {
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]int64{"order_id": id, "orders_total": total})
-	})
+	}))))
 
-	log.Fatal(http.ListenAndServe(":8080", fault.Middleware(mux)))
+	metrics.Serve(":9090")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }

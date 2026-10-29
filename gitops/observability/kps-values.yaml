@@ -1,0 +1,26 @@
+# kind has no etcd/scheduler/controller-manager metrics endpoints reachable, and Cilium replaces kube-proxy.
+kubeEtcd: {enabled: false}
+kubeScheduler: {enabled: false}
+kubeControllerManager: {enabled: false}
+kubeProxy: {enabled: false}
+
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    enableFeatures: [exemplar-storage]
+    # Pick up every PodMonitor/ServiceMonitor/PrometheusRule, not just those labelled with the Helm release.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests: {cpu: 100m, memory: 512Mi}
+      limits: {memory: 1Gi}
+
+grafana:
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  resources:
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 512Mi}

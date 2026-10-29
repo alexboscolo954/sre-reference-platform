@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alexboscolo954/sre-reference-platform/apps/internal/fault"
+	"github.com/alexboscolo954/sre-reference-platform/apps/internal/metrics"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
 		io.WriteString(w, "storefront: POST /buy to place an order\n")
 	})
-	mux.HandleFunc("POST /buy", func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /buy", metrics.Wrap("POST /buy", fault.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp, err := client.Post(checkout+"/checkout", "application/json", nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)
@@ -28,7 +29,8 @@ func main() {
 		defer resp.Body.Close()
 		w.WriteHeader(resp.StatusCode)
 		io.Copy(w, resp.Body)
-	})
+	}))))
 
-	log.Fatal(http.ListenAndServe(":8080", fault.Middleware(mux)))
+	metrics.Serve(":9090")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
