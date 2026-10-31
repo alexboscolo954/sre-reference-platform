@@ -38,10 +38,11 @@ config:
       limit_percentage: null # chart default; the explicit MiB values below the 384Mi limit are what we mean
       spike_limit_percentage: null
     # Hash user.email instead of dropping it, so traces stay correlatable by user without storing the address.
+    # Allowed hash functions: sha1, sha3, md5, hmac-sha256, hmac-sha512.
     redaction:
       allow_all_keys: true
       blocked_key_patterns: ["^user\\.email$"]
-      hash_function: sha256
+      hash_function: sha3 # unsalted: fine for a demo, use hmac-sha256 with a secret key for real PII
       summary: silent
     # Keep every error, every trace slower than the 300ms latency SLO, and 10% of the rest.
     tail_sampling:
