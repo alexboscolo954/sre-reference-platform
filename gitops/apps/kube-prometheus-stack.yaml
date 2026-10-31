@@ -13,7 +13,7 @@ spec:
         valueFiles:
           - $values/gitops/observability/kps-values.yaml
     - repoURL: https://github.com/alexboscolo954/sre-reference-platform
-      targetRevision: main
+      targetRevision: stage2/traces
       ref: values
   destination:
     server: https://kubernetes.default.svc
