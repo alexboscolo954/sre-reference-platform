@@ -24,3 +24,15 @@ grafana:
   resources:
     requests: {cpu: 50m, memory: 256Mi}
     limits: {memory: 512Mi}
+  additionalDataSources:
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.monitoring:3200
+  sidecar:
+    datasources:
+      # Histogram exemplars link to the trace in Tempo via their trace_id label.
+      exemplarTraceIdDestinations:
+        datasourceUid: tempo
+        traceIdLabelName: trace_id

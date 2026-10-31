@@ -7,6 +7,6 @@ resources:
   - podmonitor.yaml
 images:
   - name: ghcr.io/alexboscolo954/storefront
-    newTag: sha-6f1b2e51c35d0aa297a29670356151310f1af1a9
+    newTag: sha-07cea429d952bc211b8400efe913f0c3a354ebb3
   - name: ghcr.io/alexboscolo954/checkout
-    newTag: sha-6f1b2e51c35d0aa297a29670356151310f1af1a9
+    newTag: sha-07cea429d952bc211b8400efe913f0c3a354ebb3
