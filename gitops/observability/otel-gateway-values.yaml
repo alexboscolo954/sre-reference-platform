@@ -1,0 +1,67 @@
+# Gateway collector: one replica on purpose, so tail sampling sees every span of a trace.
+mode: deployment
+fullnameOverride: otel-gateway
+replicaCount: 1
+
+image:
+  repository: otel/opentelemetry-collector-contrib # tail_sampling and redaction are contrib-only
+command:
+  name: otelcol-contrib
+
+# Only OTLP is used; drop the chart's default jaeger/zipkin ports.
+ports:
+  jaeger-compact: {enabled: false}
+  jaeger-thrift: {enabled: false}
+  jaeger-grpc: {enabled: false}
+  zipkin: {enabled: false}
+
+resources:
+  requests: {cpu: 50m, memory: 128Mi}
+  limits: {memory: 384Mi}
+
+config:
+  receivers:
+    # Null out the chart defaults we don't use.
+    jaeger: null
+    prometheus: null
+    zipkin: null
+    otlp:
+      protocols:
+        grpc: {endpoint: 0.0.0.0:4317}
+        http: {endpoint: 0.0.0.0:4318}
+  processors:
+    # First in the pipeline. Under pressure it refuses data (senders retry) instead of the pod OOMing.
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 300
+      spike_limit_mib: 60
+      limit_percentage: null # chart default; the explicit MiB values below the 384Mi limit are what we mean
+      spike_limit_percentage: null
+    # Hash user.email instead of dropping it, so traces stay correlatable by user without storing the address.
+    redaction:
+      allow_all_keys: true
+      blocked_key_patterns: ["^user\\.email$"]
+      hash_function: sha256
+      summary: silent
+    # Keep every error, every trace slower than the 300ms latency SLO, and 10% of the rest.
+    tail_sampling:
+      decision_wait: 10s
+      num_traces: 5000
+      policies:
+        - {name: errors, type: status_code, status_code: {status_codes: [ERROR]}}
+        - {name: slow, type: latency, latency: {threshold_ms: 300}}
+        - {name: baseline, type: probabilistic, probabilistic: {sampling_percentage: 10}}
+    batch: {}
+  exporters:
+    otlp/tempo:
+      endpoint: tempo:4317
+      tls: {insecure: true}
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        # Redact before sampling so nothing unredacted is ever buffered past the first hop.
+        processors: [memory_limiter, redaction, tail_sampling, batch]
+        exporters: [otlp/tempo]
+      metrics: null
+      logs: null

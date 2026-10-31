@@ -18,6 +18,7 @@ spec:
           env:
             - {name: LATENCY_MS, value: "0"}
             - {name: ERROR_RATE, value: "0"}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-gateway.monitoring:4317"}
             - {name: CHECKOUT_URL, value: "http://checkout"}
           readinessProbe:
             httpGet: {path: /healthz, port: 8080}

@@ -7,21 +7,34 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/valkey-io/valkey-go"
+	"github.com/valkey-io/valkey-go/valkeyotel"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/alexboscolo954/sre-reference-platform/apps/internal/fault"
 	"github.com/alexboscolo954/sre-reference-platform/apps/internal/metrics"
+	"github.com/alexboscolo954/sre-reference-platform/apps/internal/tracing"
 )
 
 func main() {
 	ctx := context.Background()
 
-	db, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL")) // CNPG's shop-db-app secret "uri"
+	tracing.Init(ctx, "checkout")
+
+	cfg, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL")) // CNPG's shop-db-app secret "uri"
 	if err != nil {
 		log.Fatal(err)
 	}
-	vk, err := valkey.NewClient(valkey.ClientOption{InitAddress: []string{os.Getenv("VALKEY_ADDR")}})
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
+	db, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	vk, err := valkeyotel.NewClient(valkey.ClientOption{InitAddress: []string{os.Getenv("VALKEY_ADDR")}})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,7 +53,13 @@ func main() {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		}
 	})
-	mux.Handle("POST /checkout", metrics.Wrap("POST /checkout", fault.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /checkout", otelhttp.NewHandler(metrics.Wrap("POST /checkout", fault.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Optional {"email": ...}. Recorded as-is: the collector hashes it, which is the point of the redaction demo.
+		var in struct{ Email string }
+		json.NewDecoder(r.Body).Decode(&in)
+		if in.Email != "" {
+			trace.SpanFromContext(r.Context()).SetAttributes(attribute.String("user.email", in.Email))
+		}
 		var id int64
 		if err := db.QueryRow(r.Context(), `INSERT INTO orders DEFAULT VALUES RETURNING id`).Scan(&id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -52,7 +71,7 @@ func main() {
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]int64{"order_id": id, "orders_total": total})
-	}))))
+	}))), "POST /checkout"))
 
 	metrics.Serve(":9090")
 	log.Fatal(http.ListenAndServe(":8080", mux))

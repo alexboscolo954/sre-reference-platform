@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -45,13 +46,21 @@ func Wrap(route string, h http.Handler) http.Handler {
 		start := time.Now()
 		h.ServeHTTP(rec, r)
 		requests.WithLabelValues(route, r.Method, strconv.Itoa(rec.code)).Inc()
-		duration.WithLabelValues(route, r.Method).Observe(time.Since(start).Seconds())
+		obs := duration.WithLabelValues(route, r.Method)
+		secs := time.Since(start).Seconds()
+		// Needs otelhttp outside Wrap so the request context carries the span.
+		if sc := trace.SpanContextFromContext(r.Context()); sc.IsValid() {
+			obs.(prometheus.ExemplarObserver).ObserveWithExemplar(secs, prometheus.Labels{"trace_id": sc.TraceID().String()})
+			return
+		}
+		obs.Observe(secs)
 	})
 }
 
 // Serve exposes /metrics on addr in the background.
 func Serve(addr string) {
 	mux := http.NewServeMux()
-	mux.Handle("GET /metrics", promhttp.Handler())
+	// OpenMetrics is required for Prometheus to ingest exemplars.
+	mux.Handle("GET /metrics", promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{EnableOpenMetrics: true}))
 	go func() { log.Fatal(http.ListenAndServe(addr, mux)) }()
 }

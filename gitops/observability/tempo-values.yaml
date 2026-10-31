@@ -1,0 +1,6 @@
+# Single binary, no persistence: traces live in an emptyDir for the 24h of a demo cluster.
+tempo:
+  retention: 24h
+resources:
+  requests: {cpu: 50m, memory: 256Mi}
+  limits: {memory: 512Mi}
