@@ -13,7 +13,7 @@ spec:
         valueFiles:
           - $values/gitops/observability/otel-gateway-values.yaml
     - repoURL: https://github.com/alexboscolo954/sre-reference-platform
-      targetRevision: stage2/traces
+      targetRevision: main
       ref: values
   destination:
     server: https://kubernetes.default.svc
