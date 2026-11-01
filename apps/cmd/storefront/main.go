@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -17,6 +18,8 @@ import (
 
 func main() {
 	checkout := os.Getenv("CHECKOUT_URL") // e.g. http://checkout.shop.svc
+	// JSON to stdout for the log agent; log.Fatal output goes through it too.
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	tracing.Init(context.Background(), "storefront")
 	client := &http.Client{Timeout: 5 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)}
 

@@ -30,6 +30,27 @@ grafana:
       type: tempo
       access: proxy
       url: http://tempo.monitoring:3200
+      jsonData:
+        # Span -> its logs: Loki lines from the same service containing the trace ID.
+        tracesToLogsV2:
+          datasourceUid: loki
+          filterByTraceID: true
+          spanStartTimeShift: "-5m"
+          spanEndTimeShift: "5m"
+          tags: [{key: service.name, value: service_name}]
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring:3100
+      jsonData:
+        # Access log -> its trace. "$$" escapes Grafana's env-var expansion in provisioned datasources.
+        derivedFields:
+          - name: TraceID
+            matcherRegex: '"trace_id":"(\w+)"'
+            datasourceUid: tempo
+            url: "$${__value.raw}"
+            urlDisplayLabel: View trace
   sidecar:
     datasources:
       # Histogram exemplars link to the trace in Tempo via their trace_id label.

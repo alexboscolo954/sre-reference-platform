@@ -1,9 +1,12 @@
 package metrics
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -13,12 +16,23 @@ import (
 	"github.com/alexboscolo954/sre-reference-platform/apps/internal/fault"
 )
 
-func TestWrapAttachesTraceExemplar(t *testing.T) {
+func TestWrapAttachesTraceToExemplarAndLog(t *testing.T) {
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
 	tid, _ := trace.TraceIDFromHex("0102030405060708090a0b0c0d0e0f10")
 	sid, _ := trace.SpanIDFromHex("0102030405060708")
 	sc := trace.NewSpanContext(trace.SpanContextConfig{TraceID: tid, SpanID: sid, TraceFlags: trace.FlagsSampled})
 	req := httptest.NewRequest("POST", "/ex", nil).WithContext(trace.ContextWithSpanContext(context.Background(), sc))
 	Wrap("POST /ex", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(httptest.NewRecorder(), req)
+
+	for _, want := range []string{`"msg":"request"`, `"code":200`, `"trace_id":"` + tid.String() + `"`, `"span_id":"` + sid.String() + `"`} {
+		if !strings.Contains(logs.String(), want) {
+			t.Fatalf("access log %q missing %s", logs.String(), want)
+		}
+	}
 
 	mfs, err := prometheus.DefaultGatherer.Gather()
 	if err != nil {
