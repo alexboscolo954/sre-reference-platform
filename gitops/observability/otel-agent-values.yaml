@@ -1,0 +1,56 @@
+# Agent collector: one per node, tails every pod's log file and ships it to Loki over OTLP.
+mode: daemonset
+fullnameOverride: otel-agent
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+command:
+  name: otelcol-contrib
+
+presets:
+  # filelog on /var/log/pods with the container parser, skipping the collector's own logs.
+  logsCollection: {enabled: true}
+  # Adds k8s.namespace.name, k8s.pod.name etc.; Loki indexes those as labels.
+  kubernetesAttributes: {enabled: true}
+
+# Nothing sends to the agent; it only reads files.
+ports:
+  otlp: {enabled: false}
+  otlp-http: {enabled: false}
+  jaeger-compact: {enabled: false}
+  jaeger-thrift: {enabled: false}
+  jaeger-grpc: {enabled: false}
+  zipkin: {enabled: false}
+
+# Pod log files on the node are root-owned (0640), so the agent runs as root to read them.
+securityContext: {runAsUser: 0, runAsGroup: 0}
+
+resources:
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {memory: 256Mi}
+
+config:
+  receivers:
+    jaeger: null
+    prometheus: null
+    zipkin: null
+    otlp: null
+  processors:
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 200
+      spike_limit_mib: 40
+      limit_percentage: null
+      spike_limit_percentage: null
+    batch: {}
+  exporters:
+    otlphttp/loki:
+      endpoint: http://loki:3100/otlp
+  service:
+    pipelines:
+      logs:
+        receivers: []
+        processors: [memory_limiter, batch]
+        exporters: [otlphttp/loki]
+      traces: null
+      metrics: null

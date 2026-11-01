@@ -1,9 +1,11 @@
-// Package metrics records RED metrics for HTTP handlers and serves /metrics
-// on its own port, so probes and scrapes never count toward the SLIs.
+// Package metrics records RED metrics and one access log line per request for
+// HTTP handlers, and serves /metrics on its own port, so probes and scrapes
+// never count toward the SLIs.
 package metrics
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -48,11 +50,14 @@ func Wrap(route string, h http.Handler) http.Handler {
 		requests.WithLabelValues(route, r.Method, strconv.Itoa(rec.code)).Inc()
 		obs := duration.WithLabelValues(route, r.Method)
 		secs := time.Since(start).Seconds()
+		attrs := []any{"route", route, "method", r.Method, "code", rec.code, "duration_ms", secs * 1000}
 		// Needs otelhttp outside Wrap so the request context carries the span.
 		if sc := trace.SpanContextFromContext(r.Context()); sc.IsValid() {
+			slog.InfoContext(r.Context(), "request", append(attrs, "trace_id", sc.TraceID().String(), "span_id", sc.SpanID().String())...)
 			obs.(prometheus.ExemplarObserver).ObserveWithExemplar(secs, prometheus.Labels{"trace_id": sc.TraceID().String()})
 			return
 		}
+		slog.InfoContext(r.Context(), "request", attrs...)
 		obs.Observe(secs)
 	})
 }

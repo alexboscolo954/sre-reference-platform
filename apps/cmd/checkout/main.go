@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -22,6 +23,8 @@ import (
 
 func main() {
 	ctx := context.Background()
+	// JSON to stdout for the log agent; log.Fatal output goes through it too.
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
 	tracing.Init(ctx, "checkout")
 
