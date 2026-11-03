@@ -17,7 +17,7 @@ spec:
           ports: [{containerPort: 8080}, {name: metrics, containerPort: 9090}]
           env:
             - {name: LATENCY_MS, value: "0"}
-            - {name: ERROR_RATE, value: "0"}
+            - {name: ERROR_RATE, value: "0.5"}
             - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-gateway.monitoring:4317"}
             - {name: VALKEY_ADDR, value: "valkey:6379"}
             - name: DATABASE_URL
