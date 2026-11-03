@@ -11,6 +11,7 @@ kubeconfig*
 .terraform/
 
 # build / OS
+slos/tests/rules.gen.yaml
 bin/
 dist/
 .DS_Store

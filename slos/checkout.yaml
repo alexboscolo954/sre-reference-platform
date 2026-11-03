@@ -1,0 +1,40 @@
+# Checkout SLOs over Sloth's default 30d period. `make slo` turns this into
+# gitops/monitoring/slo-rules.yaml (a PrometheusRule); CI fails if they drift.
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: checkout
+  namespace: monitoring
+spec:
+  service: checkout
+  slos:
+    - name: requests-availability
+      objective: 99.9
+      description: "Checkout requests that don't fail with a 5xx."
+      sli:
+        events:
+          errorQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[{{.window}}]))
+          totalQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[{{.window}}]))
+      alerting:
+        name: CheckoutAvailabilityBudgetBurn
+        annotations:
+          summary: "Checkout is burning its availability error budget too fast."
+        pageAlert: {labels: {severity: page}}
+        ticketAlert: {labels: {severity: ticket}}
+    - name: requests-latency
+      objective: 99
+      description: "Checkout requests served in under 300ms."
+      sli:
+        events:
+          # Slow = all requests minus those in the 0.3s bucket.
+          errorQuery: |
+            sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}]))
+            -
+            sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[{{.window}}]))
+          totalQuery: sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}]))
+      alerting:
+        name: CheckoutLatencyBudgetBurn
+        annotations:
+          summary: "Checkout is burning its latency error budget too fast."
+        pageAlert: {labels: {severity: page}}
+        ticketAlert: {labels: {severity: ticket}}

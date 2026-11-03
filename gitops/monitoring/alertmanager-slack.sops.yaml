@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: alertmanager-slack
+    namespace: monitoring
+stringData:
+    url: ENC[AES256_GCM,data:O0uYrQJu89ctIBLyjHsZPOUhLLLpPZy7dBSdTfySoezJg4OMc7OQvo3pWLyskEzMYSpxoVEKSUl6LKr4E4g0wOAZQOwPv3daC40c5Fh0Jo9+,iv:tWwuN5azrbvNJ8xw7ZrF4vogCoC/QBLAKHY+xZSyidY=,tag:vD5egfkiYLAm7AQWOdCBNg==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA0azBjNVl5akhhU0I1TUZ4
+            YzZVZm9DZ0tLY2Z4NktaMkJTbUsxQlg2TXhvCk51YURJT2JoVHFQTktTTnBlNVVC
+            eERrMW41Z0Q3V0w1MVZacmRuWEpKTVkKLS0tIDFLZ05Ca1duZXQ3b3ZFa1hQWXZT
+            eHQwOWNMaU9nK2pGZ0RVWGFKelk5cDgKiKpFVSGx6f10tBEjtLbUwvg5U3qC2we5
+            uYJRQIQEBKW+ApED+TM9fZXfccFwSdPzcNNKP4zXHOxj/47g4jLAqQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1zv9vp8wk3vlq8cts5tk9h6dxlryypgxze5mpjly7acuwd6wqq5wqpa7gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-03T00:35:00Z"
+    mac: ENC[AES256_GCM,data:qbzFiiKGpV5lSE65LPt5x3nhTwBylX7xXOgyNaJ/WDzvdu0RG5GzzZz8+Q/pGxxdOL9F4jfZn0zWdAuLI1T6P4uGNb0TjuPzRJszJfmE44IhLzHz3I90WiqypOdnFtHY5/yQPdfhWlxDjNwLNzWkxuzx4788OSrOCmAU0acl0Ew=,iv:D3woTIajSb9rz40XZwGwXLbdfQMyVHFupZj7vvokkGc=,tag:F9ftehiWPwmfCTYilmZOfg==,type:str]
+    version: 3.13.3

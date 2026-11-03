@@ -11,7 +11,7 @@ export KIND_EXPERIMENTAL_DOCKER_NETWORK := $(CLUSTER)
 ARGOCD      := 10.11.1
 AGE_KEY     := $(HOME)/.config/sops/age/keys.txt
 
-.PHONY: up gitops down smoke url
+.PHONY: up gitops down smoke url slo slo-test
 
 up:
 	kind create cluster --config $(KIND_DIR)/kind-config.yaml
@@ -40,3 +40,11 @@ smoke:
 
 url:
 	@echo $(URL)
+
+# Regenerate the SLO PrometheusRule from slos/; CI fails if the committed file differs.
+slo:
+	sloth generate -i slos/checkout.yaml -o gitops/monitoring/slo-rules.yaml
+	yq '.spec' gitops/monitoring/slo-rules.yaml > slos/tests/rules.gen.yaml
+
+slo-test: slo
+	promtool test rules slos/tests/checkout_test.yaml

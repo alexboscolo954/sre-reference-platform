@@ -1,4 +1,5 @@
 resources:
   - httproute.yaml
+  - slo-rules.yaml
 generators:
   - secret-generator.yaml

@@ -1,0 +1,49 @@
+# promtool unit tests for the checkout availability SLO alerts (`make slo-test`).
+rule_files: [rules.gen.yaml]
+evaluation_interval: 1m
+
+tests:
+  # 5% of requests fail for 2h: 50x the 0.1% budget burn, so both page and ticket fire.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+        values: '0+95x120'
+      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="500"}'
+        values: '0+5x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CheckoutAvailabilityBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              sloth_severity: page
+              sloth_id: checkout-requests-availability
+              sloth_service: checkout
+              sloth_slo: requests-availability
+            exp_annotations:
+              summary: Checkout is burning its availability error budget too fast.
+              title: (page) checkout requests-availability SLO error budget burn rate is too fast.
+          - exp_labels:
+              severity: ticket
+              sloth_severity: ticket
+              sloth_id: checkout-requests-availability
+              sloth_service: checkout
+              sloth_slo: requests-availability
+            exp_annotations:
+              summary: Checkout is burning its availability error budget too fast.
+              title: (ticket) checkout requests-availability SLO error budget burn rate is too fast.
+
+  # 0.05% of requests fail: half the budget rate, so nothing fires.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+        values: '0+1999x120'
+      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="500"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CheckoutAvailabilityBudgetBurn
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: CheckoutAvailabilityBudgetBurn
+        exp_alerts: []
