@@ -1,0 +1,23 @@
+name: slo
+
+on:
+  push:
+    paths: ["slos/**", "gitops/monitoring/slo-rules.yaml", "Makefile", "mise.toml", ".github/workflows/slo.yaml"]
+  pull_request:
+    paths: ["slos/**", "gitops/monitoring/slo-rules.yaml", "Makefile", "mise.toml", ".github/workflows/slo.yaml"]
+
+permissions:
+  contents: read
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Only the SLO tools, at the versions pinned in mise.toml.
+      - uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        with:
+          install_args: aqua:slok/sloth yq promtool
+      # The committed rules must be exactly what the spec generates.
+      - run: make slo && git diff --exit-code
+      - run: make slo-test
