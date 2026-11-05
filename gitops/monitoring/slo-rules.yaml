@@ -18,7 +18,7 @@ spec:
     - expr: |
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[5m])) or vector(0))
         /
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[5m])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[5m])) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -28,7 +28,7 @@ spec:
     - expr: |
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[30m])) or vector(0))
         /
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[30m])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[30m])) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -38,7 +38,7 @@ spec:
     - expr: |
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[1h])) or vector(0))
         /
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[1h])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[1h])) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -48,7 +48,7 @@ spec:
     - expr: |
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[2h])) or vector(0))
         /
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[2h])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[2h])) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -58,7 +58,7 @@ spec:
     - expr: |
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[6h])) or vector(0))
         /
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[6h])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[6h])) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -68,7 +68,7 @@ spec:
     - expr: |
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[1d])) or vector(0))
         /
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[1d])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[1d])) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -78,7 +78,7 @@ spec:
     - expr: |
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[3d])) or vector(0))
         /
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[3d])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[3d])) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -200,7 +200,7 @@ spec:
         sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[5m]))
         )
         /
-        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[5m])))
+        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[5m])) > 0)
       labels:
         sloth_id: checkout-requests-latency
         sloth_service: checkout
@@ -213,7 +213,7 @@ spec:
         sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[30m]))
         )
         /
-        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[30m])))
+        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[30m])) > 0)
       labels:
         sloth_id: checkout-requests-latency
         sloth_service: checkout
@@ -226,7 +226,7 @@ spec:
         sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[1h]))
         )
         /
-        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[1h])))
+        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[1h])) > 0)
       labels:
         sloth_id: checkout-requests-latency
         sloth_service: checkout
@@ -239,7 +239,7 @@ spec:
         sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[2h]))
         )
         /
-        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[2h])))
+        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[2h])) > 0)
       labels:
         sloth_id: checkout-requests-latency
         sloth_service: checkout
@@ -252,7 +252,7 @@ spec:
         sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[6h]))
         )
         /
-        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[6h])))
+        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[6h])) > 0)
       labels:
         sloth_id: checkout-requests-latency
         sloth_service: checkout
@@ -265,7 +265,7 @@ spec:
         sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[1d]))
         )
         /
-        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[1d])))
+        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[1d])) > 0)
       labels:
         sloth_id: checkout-requests-latency
         sloth_service: checkout
@@ -278,7 +278,7 @@ spec:
         sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[3d]))
         )
         /
-        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[3d])))
+        (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[3d])) > 0)
       labels:
         sloth_id: checkout-requests-latency
         sloth_service: checkout
