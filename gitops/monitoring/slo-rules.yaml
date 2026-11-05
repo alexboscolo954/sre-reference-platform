@@ -16,7 +16,7 @@ spec:
   - name: sloth-slo-sli-recordings-checkout-requests-availability
     rules:
     - expr: |
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[5m])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[5m])) or vector(0))
         /
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[5m])))
       labels:
@@ -26,7 +26,7 @@ spec:
         sloth_window: 5m
       record: slo:sli_error:ratio_rate5m
     - expr: |
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[30m])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[30m])) or vector(0))
         /
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[30m])))
       labels:
@@ -36,7 +36,7 @@ spec:
         sloth_window: 30m
       record: slo:sli_error:ratio_rate30m
     - expr: |
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[1h])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[1h])) or vector(0))
         /
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[1h])))
       labels:
@@ -46,7 +46,7 @@ spec:
         sloth_window: 1h
       record: slo:sli_error:ratio_rate1h
     - expr: |
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[2h])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[2h])) or vector(0))
         /
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[2h])))
       labels:
@@ -56,7 +56,7 @@ spec:
         sloth_window: 2h
       record: slo:sli_error:ratio_rate2h
     - expr: |
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[6h])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[6h])) or vector(0))
         /
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[6h])))
       labels:
@@ -66,7 +66,7 @@ spec:
         sloth_window: 6h
       record: slo:sli_error:ratio_rate6h
     - expr: |
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[1d])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[1d])) or vector(0))
         /
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[1d])))
       labels:
@@ -76,7 +76,7 @@ spec:
         sloth_window: 1d
       record: slo:sli_error:ratio_rate1d
     - expr: |
-        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[3d])))
+        (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[3d])) or vector(0))
         /
         (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[3d])))
       labels:

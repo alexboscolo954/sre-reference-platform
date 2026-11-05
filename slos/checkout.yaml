@@ -13,7 +13,9 @@ spec:
       description: "Checkout requests that don't fail with a 5xx."
       sli:
         events:
-          errorQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[{{.window}}]))
+          # No 5xx yet means no 5xx series, and sum() over nothing is empty, not 0:
+          # without the fallback every availability rule has no data on a fresh cluster.
+          errorQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[{{.window}}])) or vector(0)
           totalQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[{{.window}}]))
       alerting:
         name: CheckoutAvailabilityBudgetBurn
