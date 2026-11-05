@@ -52,7 +52,7 @@ config:
     # Keep every error, every trace slower than the 300ms latency SLO, and 10% of the rest.
     tail_sampling:
       decision_wait: 10s
-      num_traces: 5000
+      num_traces: 50000 # 5000 overflowed at ~836 req/s x 10s decision_wait: 90% of traces evicted undecided (ADR 0008)
       policies:
         - {name: errors, type: status_code, status_code: {status_codes: [ERROR]}}
         - {name: slow, type: latency, latency: {threshold_ms: 300}}
