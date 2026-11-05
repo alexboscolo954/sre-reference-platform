@@ -1,0 +1,85 @@
+{
+  "title": "Checkout overview",
+  "uid": "checkout-overview",
+  "schemaVersion": 39,
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "SLI (5m)",
+      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 3}},
+      "targets": [
+        {"refId": "A", "legendFormat": "{{sloth_slo}}",
+         "expr": "1 - slo:sli_error:ratio_rate5m{sloth_service=\"checkout\"}"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error budget remaining (30d)",
+      "gridPos": {"x": 8, "y": 0, "w": 8, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1}},
+      "targets": [
+        {"refId": "A", "legendFormat": "{{sloth_slo}}",
+         "expr": "slo:period_error_budget_remaining:ratio{sloth_service=\"checkout\"}"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Requests/s",
+      "gridPos": {"x": 16, "y": 0, "w": 8, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "targets": [
+        {"refId": "A", "legendFormat": "{{code}}",
+         "expr": "sum by (code) (rate(http_server_requests_total{namespace=\"shop\",route=\"POST /checkout\"}[5m]))"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Burn rate (page at 14.4x on 1h, 6x on 6h)",
+      "gridPos": {"x": 0, "y": 6, "w": 24, "h": 9},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "x",
+          "custom": {"thresholdsStyle": {"mode": "line"}},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "orange", "value": 6},
+            {"color": "red", "value": 14.4}
+          ]}
+        }
+      },
+      "targets": [
+        {"refId": "A", "legendFormat": "{{sloth_slo}} 1h",
+         "expr": "slo:sli_error:ratio_rate1h{sloth_service=\"checkout\"} / on(sloth_id, sloth_slo, sloth_service) group_left slo:error_budget:ratio{sloth_service=\"checkout\"}"},
+        {"refId": "B", "legendFormat": "{{sloth_slo}} 6h",
+         "expr": "slo:sli_error:ratio_rate6h{sloth_service=\"checkout\"} / on(sloth_id, sloth_slo, sloth_service) group_left slo:error_budget:ratio{sloth_service=\"checkout\"}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "p99 latency (dots = exemplars, click for trace)",
+      "gridPos": {"x": 0, "y": 15, "w": 24, "h": 9},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {"thresholdsStyle": {"mode": "line"}},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "red", "value": 0.3}
+          ]}
+        }
+      },
+      "targets": [
+        {"refId": "A", "legendFormat": "{{route}}", "exemplar": true,
+         "expr": "histogram_quantile(0.99, sum by (le, route) (rate(http_server_request_duration_seconds_bucket{namespace=\"shop\"}[5m])))"}
+      ]
+    }
+  ]
+}

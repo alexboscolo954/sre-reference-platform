@@ -14,6 +14,11 @@ ports:
   jaeger-thrift: {enabled: false}
   jaeger-grpc: {enabled: false}
   zipkin: {enabled: false}
+  metrics: {enabled: true} # self-metrics :8888, scraped by the ServiceMonitor below
+
+# Collector self-metrics (refused/dropped spans, memory) into Prometheus.
+serviceMonitor:
+  enabled: true
 
 resources:
   requests: {cpu: 50m, memory: 128Mi}
