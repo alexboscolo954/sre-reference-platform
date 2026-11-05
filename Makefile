@@ -11,7 +11,7 @@ export KIND_EXPERIMENTAL_DOCKER_NETWORK := $(CLUSTER)
 ARGOCD      := 10.11.1
 AGE_KEY     := $(HOME)/.config/sops/age/keys.txt
 
-.PHONY: up gitops down smoke url slo slo-test
+.PHONY: up gitops down smoke url slo slo-test load load-spike
 
 up:
 	kind create cluster --config $(KIND_DIR)/kind-config.yaml
@@ -48,3 +48,11 @@ slo:
 
 slo-test: slo
 	promtool test rules slos/tests/checkout_test.yaml
+
+# Steady 20 req/s for 10m against shop.localhost (RATE=, DURATION= override).
+load:
+	k6 run load/checkout.js
+
+# Ramp to 1000 req/s for 3m to push the trace collector's memory_limiter.
+load-spike:
+	k6 run -e SPIKE=1 load/checkout.js

@@ -9,6 +9,7 @@ go = "1.27.3"
 "aqua:slok/sloth" = "0.16.0"
 yq = "4.54.1"
 promtool = "3.15.1" # same as the cluster's Prometheus
+k6 = "2.3.0"
 
 # Keep this cluster away from everything else on the machine:
 # own kubeconfig (never ~/.kube/config) and own Docker network (never "kind").

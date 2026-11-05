@@ -47,3 +47,27 @@ tests:
       - eval_time: 2h
         alertname: CheckoutAvailabilityBudgetBurn
         exp_alerts: []
+
+  # No 5xx series exists at all (fresh cluster): the SLI must read 0 errors, not no data.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+        values: '0+100x60'
+    promql_expr_test:
+      - expr: slo:sli_error:ratio_rate5m{sloth_slo="requests-availability"}
+        eval_time: 30m
+        exp_samples:
+          - labels: 'slo:sli_error:ratio_rate5m{sloth_id="checkout-requests-availability",sloth_service="checkout",sloth_slo="requests-availability",sloth_window="5m"}'
+            value: 0
+
+  # 30m of clean traffic, then 2h idle: the 30d SLI must stay 0, not turn NaN.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+        values: '0+100x30 3000x120'
+    promql_expr_test:
+      - expr: slo:sli_error:ratio_rate30d{sloth_slo="requests-availability"}
+        eval_time: 150m
+        exp_samples:
+          - labels: 'slo:sli_error:ratio_rate30d{sloth_id="checkout-requests-availability",sloth_service="checkout",sloth_slo="requests-availability",sloth_window="30d"}'
+            value: 0

@@ -13,8 +13,13 @@ spec:
       description: "Checkout requests that don't fail with a 5xx."
       sli:
         events:
-          errorQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[{{.window}}]))
-          totalQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[{{.window}}]))
+          # No 5xx yet means no 5xx series, and sum() over nothing is empty, not 0:
+          # without the fallback every availability rule has no data on a fresh cluster.
+          errorQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[{{.window}}])) or vector(0)
+          # "> 0": with no traffic the SLI is 0/0 = NaN, and one NaN sample turns Sloth's 30d
+          # average (sum_over_time / count_over_time of the 5m SLI) into NaN for 30 days.
+          # Dropping idle samples averages only over time with traffic.
+          totalQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[{{.window}}])) > 0
       alerting:
         name: CheckoutAvailabilityBudgetBurn
         annotations:
@@ -31,7 +36,7 @@ spec:
             sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}]))
             -
             sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[{{.window}}]))
-          totalQuery: sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}]))
+          totalQuery: sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}])) > 0 # see availability
       alerting:
         name: CheckoutLatencyBudgetBurn
         annotations:
