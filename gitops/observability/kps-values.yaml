@@ -45,7 +45,7 @@ grafana:
     passwordKey: admin-password
   resources:
     requests: {cpu: 50m, memory: 256Mi}
-    limits: {memory: 512Mi}
+    limits: {memory: 768Mi} # 512Mi OOMed rendering Sloth dashboards during the burn proof (ADR 0009)
   additionalDataSources:
     - name: Tempo
       uid: tempo
