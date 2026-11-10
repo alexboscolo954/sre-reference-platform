@@ -1,0 +1,11 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: dashboard
+  namespace: argo-rollouts
+spec:
+  parentRefs:
+    - {name: shared, namespace: gateway}
+  hostnames: [rollouts.localhost]
+  rules:
+    - backendRefs: [{name: argo-rollouts-dashboard, port: 3100}]

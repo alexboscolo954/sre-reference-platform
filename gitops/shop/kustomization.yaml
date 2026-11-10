@@ -2,11 +2,12 @@ resources:
   - postgres.yaml
   - valkey.yaml
   - checkout.yaml
+  - checkout-route.yaml
   - storefront.yaml
   - httproute.yaml
   - podmonitor.yaml
 images:
   - name: ghcr.io/alexboscolo954/storefront
-    newTag: sha-990bd197e037b61356745eb12360c19043b3fb96
+    newTag: sha-d83cb39cf19bd800adcb2277b60635fa2ea96f2c
   - name: ghcr.io/alexboscolo954/checkout
     newTag: sha-990bd197e037b61356745eb12360c19043b3fb96
