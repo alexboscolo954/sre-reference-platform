@@ -21,7 +21,12 @@ func main() {
 	// JSON to stdout for the log agent; log.Fatal output goes through it too.
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	tracing.Init(context.Background(), "storefront")
-	client := &http.Client{Timeout: 5 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)}
+	// One connection per call. Cilium's GAMMA Envoy binds upstream sockets to the
+	// caller's own address and port, so a reused keepalive connection collides
+	// when a checkout pod sits in both route backends (ADR 0010).
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DisableKeepAlives = true
+	client := &http.Client{Timeout: 5 * time.Second, Transport: otelhttp.NewTransport(tr)}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {})
