@@ -12,13 +12,26 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: shop
+  # Argo Rollouts owns the canary weights and the stable/canary selectors (ADR 0010).
+  ignoreDifferences:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: checkout
+      jsonPointers: [/spec/rules/0/backendRefs]
+    - kind: Service
+      name: checkout-stable
+      jsonPointers: [/spec/selector/rollouts-pod-template-hash]
+    - kind: Service
+      name: checkout-canary
+      jsonPointers: [/spec/selector/rollouts-pod-template-hash]
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - SkipDryRunOnMissingResource=true # CNPG Cluster CRD arrives from cnpg-operator
+      - SkipDryRunOnMissingResource=true # CNPG Cluster and Rollout CRDs arrive from their operators
+      - RespectIgnoreDifferences=true
     retry:
       limit: 10
       backoff: {duration: 15s, factor: 2, maxDuration: 3m}

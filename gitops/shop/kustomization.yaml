@@ -2,6 +2,7 @@ resources:
   - postgres.yaml
   - valkey.yaml
   - checkout.yaml
+  - checkout-route.yaml
   - storefront.yaml
   - httproute.yaml
   - podmonitor.yaml

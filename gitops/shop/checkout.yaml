@@ -1,10 +1,25 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: checkout
   namespace: shop
 spec:
   replicas: 2
+  strategy:
+    canary:
+      stableService: checkout-stable
+      canaryService: checkout-canary
+      trafficRouting:
+        plugins:
+          argoproj-labs/gatewayAPI:
+            httpRoute: checkout
+            namespace: shop
+      steps:
+        - setWeight: 20
+        - pause: {duration: 2m}
+        - setWeight: 50
+        - pause: {duration: 2m}
+        - setWeight: 100
   selector:
     matchLabels: {app: checkout}
   template:
@@ -36,6 +51,25 @@ apiVersion: v1
 kind: Service
 metadata:
   name: checkout
+  namespace: shop
+spec:
+  selector: {app: checkout}
+  ports: [{port: 80, targetPort: 8080}]
+---
+# Rollouts adds rollouts-pod-template-hash to these selectors.
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-stable
+  namespace: shop
+spec:
+  selector: {app: checkout}
+  ports: [{port: 80, targetPort: 8080}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-canary
   namespace: shop
 spec:
   selector: {app: checkout}

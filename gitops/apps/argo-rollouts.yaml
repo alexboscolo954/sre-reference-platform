@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-rollouts
+      targetRevision: 2.43.12 # Argo Rollouts v1.10.2
+      helm:
+        valuesObject:
+          controller:
+            trafficRouterPlugins:
+              # Splits checkout traffic on a GAMMA HTTPRoute (ADR 0010)
+              - name: argoproj-labs/gatewayAPI
+                location: https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.17.0/gatewayapi-plugin-linux-arm64
+                sha256: 5221279f7bf2c9b2c0ff6ed7ff12718ecce1d4892f1ff5e5224bb723cfd0fd92
+          dashboard:
+            enabled: true
+    - repoURL: https://github.com/alexboscolo954/sre-reference-platform
+      targetRevision: main
+      path: gitops/argo-rollouts
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
