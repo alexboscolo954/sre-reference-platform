@@ -12,17 +12,17 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: shop
-  # Argo Rollouts owns the canary weights and the ping/pong selectors (ADR 0010).
+  # Argo Rollouts owns the canary weights and the stable/canary selectors (ADR 0010).
   ignoreDifferences:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       name: checkout
       jsonPointers: [/spec/rules/0/backendRefs]
     - kind: Service
-      name: checkout-ping
+      name: checkout-stable
       jsonPointers: [/spec/selector/rollouts-pod-template-hash]
     - kind: Service
-      name: checkout-pong
+      name: checkout-canary
       jsonPointers: [/spec/selector/rollouts-pod-template-hash]
   syncPolicy:
     automated:

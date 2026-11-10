@@ -1,6 +1,5 @@
 # GAMMA producer route: storefront -> Service checkout is split between
-# ping and pong, which swap the stable and canary roles each release.
-# Argo Rollouts' Gateway API plugin owns the weights.
+# stable and canary. Argo Rollouts' Gateway API plugin owns the weights.
 # API-server defaults are spelled out so Argo CD's diff stays clean (ADR 0010).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -13,5 +12,5 @@ spec:
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
       backendRefs:
-        - {group: "", kind: Service, name: checkout-ping, port: 80, weight: 100}
-        - {group: "", kind: Service, name: checkout-pong, port: 80, weight: 0}
+        - {group: "", kind: Service, name: checkout-stable, port: 80, weight: 100}
+        - {group: "", kind: Service, name: checkout-canary, port: 80, weight: 0}
