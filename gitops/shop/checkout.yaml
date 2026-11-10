@@ -7,8 +7,11 @@ spec:
   replicas: 2
   strategy:
     canary:
-      stableService: checkout-stable
-      canaryService: checkout-canary
+      # Ping-pong: the two Services keep their pods at promotion and swap roles,
+      # so no pod moves between Envoy clusters mid-traffic (ADR 0010).
+      pingPong:
+        pingService: checkout-ping
+        pongService: checkout-pong
       trafficRouting:
         plugins:
           argoproj-labs/gatewayAPI:
@@ -61,7 +64,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: checkout-stable
+  name: checkout-ping
   namespace: shop
 spec:
   selector: {app: checkout}
@@ -70,7 +73,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: checkout-canary
+  name: checkout-pong
   namespace: shop
 spec:
   selector: {app: checkout}
