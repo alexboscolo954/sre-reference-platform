@@ -14,6 +14,11 @@ spec:
           argoproj-labs/gatewayAPI:
             httpRoute: checkout
             namespace: shop
+      analysis:
+        templates: [{templateName: checkout-canary-burn}]
+        args:
+          - name: hash
+            valueFrom: {podTemplateHashValue: Latest}
       steps:
         - setWeight: 20
         - pause: {duration: 2m}
@@ -25,7 +30,7 @@ spec:
   template:
     metadata:
       labels: {app: checkout}
-      annotations: {release: "5"} # bump to start a canary without a new image
+      annotations: {release: "6"} # bump to start a canary without a new image
     spec:
       containers:
         - name: checkout

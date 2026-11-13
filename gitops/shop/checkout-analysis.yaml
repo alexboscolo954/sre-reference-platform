@@ -1,0 +1,36 @@
+# Canary-only 2m burn rates, same SLIs and budgets as slos/checkout.yaml (ADR 0011).
+# "> 0" on the total: a canary with no traffic gives an empty result, which passes.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: checkout-canary-burn
+  namespace: shop
+spec:
+  args:
+    - name: hash
+  metrics:
+    - name: availability-burn
+      interval: 30s
+      failureLimit: 1 # the second failure aborts
+      successCondition: len(result) == 0 || result[0] < 14.4
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring:9090
+          query: |
+            (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",rollouts_pod_template_hash="{{args.hash}}",code=~"5.."}[2m])) or vector(0))
+            / (sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",rollouts_pod_template_hash="{{args.hash}}"}[2m])) > 0)
+            / 0.001
+    - name: latency-burn
+      interval: 30s
+      failureLimit: 1
+      successCondition: len(result) == 0 || result[0] < 14.4
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring:9090
+          query: |
+            (
+              sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout",rollouts_pod_template_hash="{{args.hash}}"}[2m]))
+              - sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",rollouts_pod_template_hash="{{args.hash}}",le="0.3"}[2m]))
+            )
+            / (sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout",rollouts_pod_template_hash="{{args.hash}}"}[2m])) > 0)
+            / 0.01

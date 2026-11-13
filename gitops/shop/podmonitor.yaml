@@ -9,3 +9,4 @@ spec:
       - {key: app, operator: In, values: [storefront, checkout]}
   podMetricsEndpoints:
     - port: metrics
+  podTargetLabels: [rollouts-pod-template-hash]
