@@ -30,7 +30,7 @@ spec:
   template:
     metadata:
       labels: {app: checkout}
-      annotations: {release: "5"} # bump to start a canary without a new image
+      annotations: {release: "6"} # bump to start a canary without a new image
     spec:
       containers:
         - name: checkout
