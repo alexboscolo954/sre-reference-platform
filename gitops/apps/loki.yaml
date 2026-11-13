@@ -13,7 +13,7 @@ spec:
         valueFiles:
           - $values/gitops/observability/loki-values.yaml
     - repoURL: https://github.com/alexboscolo954/sre-reference-platform
-      targetRevision: main
+      targetRevision: stage3/canary-analysis
       ref: values
   destination:
     server: https://kubernetes.default.svc
