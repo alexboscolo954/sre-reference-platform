@@ -20,7 +20,7 @@ spec:
           dashboard:
             enabled: true
     - repoURL: https://github.com/alexboscolo954/sre-reference-platform
-      targetRevision: main
+      targetRevision: stage3/chaos-mesh
       path: gitops/argo-rollouts
   destination:
     server: https://kubernetes.default.svc
