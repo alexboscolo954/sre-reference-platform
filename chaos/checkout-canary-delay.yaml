@@ -1,0 +1,18 @@
+# Delays every packet the checkout canary sends by 200ms. Each checkout request makes
+# two round trips (Postgres, Valkey), so it lands near 400ms, over the 300ms latency SLO.
+# Applied with `make chaos` during a rollout; ends by itself after 5 minutes.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: checkout-canary-delay
+  namespace: shop
+spec:
+  action: delay
+  mode: all
+  duration: 5m
+  selector:
+    namespaces: [shop]
+    labelSelectors:
+      rollouts-pod-template-hash: REPLACED_BY_MAKE
+  delay:
+    latency: 200ms

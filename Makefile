@@ -11,7 +11,7 @@ export KIND_EXPERIMENTAL_DOCKER_NETWORK := $(CLUSTER)
 ARGOCD      := 10.11.1
 AGE_KEY     := $(HOME)/.config/sops/age/keys.txt
 
-.PHONY: up gitops down smoke url slo slo-test load load-spike
+.PHONY: up gitops down smoke url slo slo-test load load-spike chaos chaos-stop
 
 up:
 	kind create cluster --config $(KIND_DIR)/kind-config.yaml
@@ -56,3 +56,11 @@ load:
 # Ramp to 1000 req/s for 3m to push the trace collector's memory_limiter.
 load-spike:
 	k6 run -e SPIKE=1 load/checkout.js
+
+# Delay the current checkout canary (ADR 0012). Run it once the canary pod is up.
+chaos:
+	HASH=$$(kubectl get rollout checkout -n shop -o jsonpath='{.status.currentPodHash}') \
+		yq '.spec.selector.labelSelectors."rollouts-pod-template-hash" = strenv(HASH)' chaos/checkout-canary-delay.yaml | kubectl apply -f -
+
+chaos-stop:
+	kubectl delete -f chaos/checkout-canary-delay.yaml --ignore-not-found
