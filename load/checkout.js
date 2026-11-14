@@ -36,4 +36,6 @@ export default function () {
     headers: { Host: 'shop.localhost', 'Content-Type': 'application/json' },
   });
   check(res, { 'status 200': (r) => r.status === 200 });
+  // A failed response carries its reason in the body (Envoy's 503 says why the upstream connect failed).
+  if (res.status !== 200 && !__ENV.SPIKE) console.log(`${res.status} ${res.body}`);
 }

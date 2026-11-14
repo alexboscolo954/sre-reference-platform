@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chaos-mesh
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.chaos-mesh.org
+    chart: chaos-mesh
+    targetRevision: 2.8.8
+    helm:
+      valuesObject:
+        controllerManager:
+          replicaCount: 1
+          enableFilterNamespace: true # only namespaces annotated chaos-mesh.org/inject=enabled
+        chaosDaemon:
+          runtime: containerd # kind nodes have no docker.sock
+          socketPath: /run/containerd/containerd.sock
+        dashboard: {create: false}
+        dnsServer: {create: false}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chaos-mesh
+  # The chart generates new certificates and a random rollme annotation on every render (ADR 0012).
+  ignoreDifferences:
+    - kind: Secret
+      namespace: chaos-mesh
+      jsonPointers: [/data]
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions: ['.webhooks[].clientConfig.caBundle']
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions: ['.webhooks[].clientConfig.caBundle']
+    - group: apps
+      kind: Deployment
+      jsonPointers: [/spec/template/metadata/annotations/rollme]
+    - group: apps
+      kind: DaemonSet
+      jsonPointers: [/spec/template/metadata/annotations/rollme]
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true # 23 CRDs exceed the client-side annotation limit
+      - RespectIgnoreDifferences=true

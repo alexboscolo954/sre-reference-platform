@@ -13,3 +13,8 @@ gatewayAPI:
     enabled: true
 operator:
   replicas: 1
+# Envoy binds each GAMMA upstream connection to the caller's address and port and
+# keeps it open for this long. At the default 60s, a source port that storefront
+# reuses after a promotion collides with the old connection (ADR 0012).
+envoy:
+  idleTimeoutDurationSeconds: 2

@@ -25,6 +25,9 @@ spec:
       name: checkout-canary
       jsonPointers: [/spec/selector/rollouts-pod-template-hash]
   syncPolicy:
+    managedNamespaceMetadata:
+      annotations:
+        chaos-mesh.org/inject: enabled
     automated:
       prune: true
       selfHeal: true
