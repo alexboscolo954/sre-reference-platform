@@ -59,6 +59,7 @@ load-spike:
 
 # Delay the current checkout canary (ADR 0012). Run it once the canary pod is up.
 chaos:
+	@kubectl get rollout checkout -n shop -o jsonpath='{.status.currentPodHash} {.status.stableRS}' | { read c s; [ "$$c" != "$$s" ]; } || { echo "No canary in progress: this would delay the stable pods."; exit 1; }
 	HASH=$$(kubectl get rollout checkout -n shop -o jsonpath='{.status.currentPodHash}') \
 		yq '.spec.selector.labelSelectors."rollouts-pod-template-hash" = strenv(HASH)' chaos/checkout-canary-delay.yaml | kubectl apply -f -
 

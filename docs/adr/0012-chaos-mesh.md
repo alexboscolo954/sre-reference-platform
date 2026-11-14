@@ -180,7 +180,8 @@ and two requests is a small sample.
   - Aborted 90 seconds after the canary started, inside the 20% pause.
   - The canary served 353 requests, all 200. None finished under 300ms:
     294 took 300 to 500ms, 48 took 0.5 to 1s, and 11 took 1 to 5s.
-  - `availability-burn` stayed at 0, and k6 logged no failed request.
+  - `availability-burn` stayed at 0, and k6 counted 0 failed requests of
+    36001 over the whole 30-minute run.
   - The canary pod stayed Ready until it was terminated, so the analysis
     measured real traffic.
 - **The stable SLO page did not fire.** No `Checkout*` alert went pending.
@@ -193,9 +194,9 @@ and two requests is a small sample.
   state.** No condition became true and no pod record appeared. Whether its
   other conditions or events give a reason was not read, so check an
   experiment's status before trusting a run.
-- **`make chaos` outside a rollout delays the stable pods.** With no canary
-  in progress the Rollout's current hash is the stable one, so both stable
-  pods are selected and the real SLO burns.
+- **`make chaos` refuses to run outside a rollout.** With no canary in
+  progress the Rollout's current hash is the stable one, so the experiment
+  would select both stable pods and burn the real SLO.
 - **The delay slows the canary's health checks too,** to an estimated 600ms
   against a 1s probe timeout. A larger delay could make the pod NotReady. It
   would then get no traffic, the analysis would see an empty result, and
