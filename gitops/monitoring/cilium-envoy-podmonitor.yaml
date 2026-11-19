@@ -1,0 +1,20 @@
+# Gateway-side request counts for the checkout availability SLO (GameDay 0001): every
+# shop request crosses the Gateway, including the ones that never reach a pod.
+# Only the two counters the SLO reads are kept; Envoy exposes thousands of series.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cilium-envoy
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames: [kube-system]
+  selector:
+    matchLabels:
+      k8s-app: cilium-envoy
+  podMetricsEndpoints:
+    - port: envoy-metrics
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: envoy_cluster_upstream_rq_(completed|xx)
+          action: keep

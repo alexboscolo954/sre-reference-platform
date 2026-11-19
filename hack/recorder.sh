@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Per-second recorder for a checkout promotion (#21, 503 investigation). Read-only.
-# usage: recorder.sh <outdir> <old-stable-hash> <max-seconds>
-# Stops 150s after the Rollout is Healthy on a hash other than <old-stable-hash>.
+# Per-second recorder for a checkout promotion (#21) or a GameDay (#22). Read-only.
+# usage: recorder.sh <outdir> <old-stable-hash|-> <max-seconds>
+# With a hash: stops 150s after the Rollout is Healthy on another hash. With "-": records max-seconds.
 set -uo pipefail
 out=$1; old=$2; max=$3
 mkdir -p "$out"; rm -f "$out"/*.log
 T='(now|strftime("%H:%M:%S"))'
 
-kubectl get pods -n shop -l app=checkout -w -o json | jq --unbuffered -c "{t:$T, pod:.metadata.name, hash:.metadata.labels[\"rollouts-pod-template-hash\"], phase:.status.phase, ready:([.status.conditions[]?|select(.type==\"Ready\")|.status]|first), deleting:(.metadata.deletionTimestamp!=null), ip:.status.podIP, node:.spec.nodeName}" > "$out/pods.log" &
+kubectl get pods -n shop -w -o json | jq --unbuffered -c "{t:$T, pod:.metadata.name, role:.metadata.labels[\"cnpg.io/instanceRole\"], hash:.metadata.labels[\"rollouts-pod-template-hash\"], phase:.status.phase, ready:([.status.conditions[]?|select(.type==\"Ready\")|.status]|first), deleting:(.metadata.deletionTimestamp!=null), ip:.status.podIP, node:.spec.nodeName}" > "$out/pods.log" &
 w1=$!
-kubectl get endpointslices -n shop -w -o json | jq --unbuffered -c "select((.metadata.labels[\"kubernetes.io/service-name\"] // \"\")|test(\"^checkout\")) | {t:$T, svc:.metadata.labels[\"kubernetes.io/service-name\"], eps:[.endpoints[]?|\"\(.addresses[0]) ready=\(.conditions.ready) serving=\(.conditions.serving) term=\(.conditions.terminating)\"]}" > "$out/eps.log" &
+kubectl get endpointslices -n shop -w -o json | jq --unbuffered -c "select((.metadata.labels[\"kubernetes.io/service-name\"] // \"\")|test(\"^(checkout|shop-db-rw)\")) | {t:$T, svc:.metadata.labels[\"kubernetes.io/service-name\"], eps:[.endpoints[]?|\"\(.addresses[0]) ready=\(.conditions.ready) serving=\(.conditions.serving) term=\(.conditions.terminating)\"]}" > "$out/eps.log" &
 w2=$!
 kubectl get rollout checkout -n shop -w -o json | jq --unbuffered -c "{t:$T, phase:.status.phase, step:.status.currentStepIndex, stable:.status.stableRS, current:.status.currentPodHash, msg:(.status.message // \"\")}" > "$out/rollout.log" &
 w3=$!
@@ -18,6 +18,10 @@ w4=$!
 
 kubectl get analysisrun -n shop -w -o json | jq --unbuffered -c "{t:$T, run:.metadata.name, phase:.status.phase, msg:(.status.message // \"\"), metrics:[.status.metricResults[]? | \"\(.name) ok=\(.successful // 0) fail=\(.failed // 0) last=\(.measurements[-1].value // \"-\")\"]}" > "$out/analysis.log" &
 hp0=$!
+kubectl get cluster shop-db -n shop -w -o json | jq --unbuffered -c "{t:$T, phase:.status.phase, primary:.status.currentPrimary, target:.status.targetPrimary, ready:.status.readyInstances}" > "$out/cnpg.log" &
+w5=$!
+kubectl get nodes -w -o json | jq --unbuffered -c "{t:$T, node:.metadata.name, ready:([.status.conditions[]|select(.type==\"Ready\")|.status]|first), taints:[.spec.taints[]?.key]}" > "$out/nodes.log" &
+w6=$!
 
 # Hubble flows (TCP flags per connection) for checkout:8080, one stream per worker node's agent.
 hp=""
@@ -35,15 +39,15 @@ end=$((SECONDS+max)); promoted=0
 while [ $SECONDS -lt $end ]; do
   t=$(date -u +%H:%M:%S)
   for s in $sf; do
-    kubectl get --raw "/api/v1/namespaces/shop/pods/$s:9090/proxy/metrics" 2>/dev/null | awk -v t="$t" -v p="$s" '/^http_server_requests_total/ {print t, p, $0}' >> "$out/storefront.log"
+    kubectl get --request-timeout=2s --raw "/api/v1/namespaces/shop/pods/$s:9090/proxy/metrics" 2>/dev/null | awk -v t="$t" -v p="$s" '/^http_server_requests_total/ {print t, p, $0}' >> "$out/storefront.log"
   done
   for e in $envoys; do
-    kubectl get --raw "/api/v1/namespaces/kube-system/pods/${e%@*}:9964/proxy/metrics" 2>/dev/null | grep -E "$keep" | grep -E 'checkout-(stable|canary)' | awk -v t="$t" -v n="${e#*@}" '{print t, n, $0}' >> "$out/envoy.log"
+    kubectl get --request-timeout=2s --raw "/api/v1/namespaces/kube-system/pods/${e%@*}:9964/proxy/metrics" 2>/dev/null | grep -E "$keep" | grep -E 'checkout-(stable|canary)' | awk -v t="$t" -v n="${e#*@}" '{print t, n, $0}' >> "$out/envoy.log"
   done
-  if [ $promoted -eq 0 ] && jq -e --arg old "$old" 'select((.phase=="Healthy" and .stable==.current and .stable!=$old) or .phase=="Degraded")' "$out/rollout.log" >/dev/null 2>&1; then
+  if [ "$old" != "-" ] && [ $promoted -eq 0 ] && jq -e --arg old "$old" 'select((.phase=="Healthy" and .stable==.current and .stable!=$old) or .phase=="Degraded")' "$out/rollout.log" >/dev/null 2>&1; then
     promoted=1; end=$((SECONDS+150)); echo "promotion or abort seen at $t, recording 150s more"
   fi
 done
-kill $w1 $w2 $w3 $w4 $hp0 $hp 2>/dev/null
+kill $w1 $w2 $w3 $w4 $w5 $w6 $hp0 $hp 2>/dev/null
 pkill -P $$ 2>/dev/null
 echo "done promoted=$promoted lines: $(wc -l "$out"/*.log | tr '\n' ' ')"

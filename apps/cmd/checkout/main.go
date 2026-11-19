@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync/atomic"
+	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,22 +39,38 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	vk, err := valkeyotel.NewClient(valkey.ClientOption{InitAddress: []string{os.Getenv("VALKEY_ADDR")}})
-	if err != nil {
+	// ForceSingleClient returns a client even when Valkey is down and redials later (GameDay 0001):
+	// valkeyotel.NewClient would drop it, so the tracing wrapper is added afterwards.
+	vkc, err := valkey.NewClient(valkey.ClientOption{InitAddress: []string{os.Getenv("VALKEY_ADDR")}, ForceSingleClient: true})
+	if vkc == nil {
 		log.Fatal(err)
 	}
+	vk := valkeyotel.WithClient(vkc)
 
-	if _, err := db.Exec(ctx, `CREATE TABLE IF NOT EXISTS orders (id bigserial PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now())`); err != nil {
-		log.Fatal(err)
-	}
+	// Retried in the background so a missing primary does not crash-loop checkout (GameDay 0001).
+	var schemaReady atomic.Bool
+	go func() {
+		for {
+			_, err := db.Exec(ctx, `CREATE TABLE IF NOT EXISTS orders (id bigserial PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now())`)
+			if err == nil {
+				schemaReady.Store(true)
+				return
+			}
+			slog.Warn("create orders table", "err", err)
+			time.Sleep(2 * time.Second)
+		}
+	}()
 
 	mux := http.NewServeMux()
+	// Liveness: the process answers. Dependencies stay out of it, or their outage restarts checkout.
+	mux.HandleFunc("GET /livez", func(http.ResponseWriter, *http.Request) {})
+	// Readiness: Postgres only. Valkey holds a counter cache, so checkout serves without it.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		if err := db.Ping(r.Context()); err != nil {
-			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		if !schemaReady.Load() {
+			http.Error(w, "orders table not created yet", http.StatusServiceUnavailable)
 			return
 		}
-		if err := vk.Do(r.Context(), vk.B().Ping().Build()).Error(); err != nil {
+		if err := db.Ping(r.Context()); err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		}
 	})
@@ -68,12 +86,14 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		total, err := vk.Do(r.Context(), vk.B().Incr().Key("orders_total").Build()).AsInt64()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		out := map[string]int64{"order_id": id}
+		// The order is already in Postgres; a Valkey outage only loses the counter.
+		if total, err := vk.Do(r.Context(), vk.B().Incr().Key("orders_total").Build()).AsInt64(); err != nil {
+			slog.WarnContext(r.Context(), "orders_total not incremented", "err", err)
+		} else {
+			out["orders_total"] = total
 		}
-		json.NewEncoder(w).Encode(map[string]int64{"order_id": id, "orders_total": total})
+		json.NewEncoder(w).Encode(out)
 	}))), "POST /checkout"))
 
 	metrics.Serve(":9090")
