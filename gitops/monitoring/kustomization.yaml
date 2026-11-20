@@ -1,5 +1,6 @@
 resources:
   - httproute.yaml
+  - cilium-envoy-podmonitor.yaml
   - slo-rules.yaml
 generators:
   - secret-generator.yaml

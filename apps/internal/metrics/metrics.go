@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -43,6 +44,11 @@ func (r *recorder) WriteHeader(code int) {
 // Wrap counts and times h under the given route label. Put it outside
 // fault.Middleware so injected errors and latency are measured.
 func Wrap(route string, h http.Handler) http.Handler {
+	// Create the error series at zero: a series born at its first error hides that step from rate() (GameDay 0001).
+	method, _, _ := strings.Cut(route, " ")
+	for _, code := range []string{"200", "500", "502", "503"} {
+		requests.WithLabelValues(route, method, code)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec := &recorder{ResponseWriter: w, code: http.StatusOK}
 		start := time.Now()

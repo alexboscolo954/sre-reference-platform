@@ -6,9 +6,11 @@ tests:
   # 5% of requests fail for 2h: 50x the 0.1% budget burn, so both page and ticket fire.
   - interval: 1m
     input_series:
-      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+      - series: 'envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}'
+        values: '0+100x120'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="2"}'
         values: '0+95x120'
-      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="500"}'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="5"}'
         values: '0+5x120'
     alert_rule_test:
       - eval_time: 1h
@@ -36,9 +38,11 @@ tests:
   # 0.05% of requests fail: half the budget rate, so nothing fires.
   - interval: 1m
     input_series:
-      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+      - series: 'envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}'
+        values: '0+2000x120'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="2"}'
         values: '0+1999x120'
-      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="500"}'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="5"}'
         values: '0+1x120'
     alert_rule_test:
       - eval_time: 1h
@@ -51,7 +55,9 @@ tests:
   # No 5xx series exists at all (fresh cluster): the SLI must read 0 errors, not no data.
   - interval: 1m
     input_series:
-      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+      - series: 'envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}'
+        values: '0+100x60'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="2"}'
         values: '0+100x60'
     promql_expr_test:
       - expr: slo:sli_error:ratio_rate5m{sloth_slo="requests-availability"}
@@ -63,7 +69,9 @@ tests:
   # 30m of clean traffic, then 2h idle: the 30d SLI must stay 0, not turn NaN.
   - interval: 1m
     input_series:
-      - series: 'http_server_requests_total{namespace="shop",route="POST /checkout",method="POST",code="200"}'
+      - series: 'envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}'
+        values: '0+100x30 3000x120'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="2"}'
         values: '0+100x30 3000x120'
     promql_expr_test:
       - expr: slo:sli_error:ratio_rate30d{sloth_slo="requests-availability"}
@@ -71,3 +79,34 @@ tests:
         exp_samples:
           - labels: 'slo:sli_error:ratio_rate30d{sloth_id="checkout-requests-availability",sloth_service="checkout",sloth_slo="requests-availability",sloth_window="30d"}'
             value: 0
+
+  # GameDay 0001 run A: 30m at 20 req/s, then 2m where every request fails and no 5xx
+  # series exists yet (Envoy creates it at the first error). The page must still fire.
+  - interval: 1m
+    input_series:
+      - series: 'envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}'
+        values: '0+1200x32'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="2"}'
+        values: '0+1200x30 36000x2'
+    alert_rule_test:
+      - eval_time: 32m
+        alertname: CheckoutAvailabilityBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              sloth_severity: page
+              sloth_id: checkout-requests-availability
+              sloth_service: checkout
+              sloth_slo: requests-availability
+            exp_annotations:
+              summary: Checkout is burning its availability error budget too fast.
+              title: (page) checkout requests-availability SLO error budget burn rate is too fast.
+          - exp_labels:
+              severity: ticket
+              sloth_severity: ticket
+              sloth_id: checkout-requests-availability
+              sloth_service: checkout
+              sloth_slo: requests-availability
+            exp_annotations:
+              summary: Checkout is burning its availability error budget too fast.
+              title: (ticket) checkout requests-availability SLO error budget burn rate is too fast.

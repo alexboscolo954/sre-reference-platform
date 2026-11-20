@@ -1,0 +1,17 @@
+# GameDay 1, scenario A: kills the current shop-db primary pod once, with no grace period.
+# CNPG should promote a replica and recreate the killed pod as a replica.
+# Applied by hand during `make load`; delete it before re-applying, as a PodChaos fires once.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: cnpg-primary-kill
+  namespace: shop
+spec:
+  action: pod-kill
+  mode: one
+  gracePeriod: 0
+  selector:
+    namespaces: [shop]
+    labelSelectors:
+      cnpg.io/cluster: shop-db
+      cnpg.io/instanceRole: primary

@@ -10,16 +10,24 @@ spec:
   slos:
     - name: requests-availability
       objective: 99.9
-      description: "Checkout requests that don't fail with a 5xx."
+      description: "Shop requests through the Gateway (storefront, then checkout) that don't fail with a 5xx."
       sli:
         events:
-          # No 5xx yet means no 5xx series, and sum() over nothing is empty, not 0:
-          # without the fallback every availability rule has no data on a fresh cluster.
-          errorQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout",code=~"5.."}[{{.window}}])) or vector(0)
+          # Measured at the Gateway's storefront cluster, not inside checkout: in GameDay 0001
+          # checkout's own counters missed both outages (Envoy rejected requests before they
+          # reached it, and liveness killed pods before their errors were scraped).
+          # "completed" counts every response, Envoy's own 503s included. Errors are what is left
+          # after 2xx-4xx, because Envoy creates the 5xx series at the first error and rate()
+          # cannot see the step to its first sample. A first 4xx is counted as an error for one
+          # scrape in the same way; that is the price of seeing every first 5xx.
+          errorQuery: |
+            sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[{{.window}}]))
+            -
+            (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[{{.window}}])) or vector(0))
           # "> 0": with no traffic the SLI is 0/0 = NaN, and one NaN sample turns Sloth's 30d
           # average (sum_over_time / count_over_time of the 5m SLI) into NaN for 30 days.
           # Dropping idle samples averages only over time with traffic.
-          totalQuery: sum(rate(http_server_requests_total{namespace="shop",route="POST /checkout"}[{{.window}}])) > 0
+          totalQuery: sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[{{.window}}])) > 0
       alerting:
         name: CheckoutAvailabilityBudgetBurn
         annotations:

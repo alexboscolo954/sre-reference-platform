@@ -47,7 +47,7 @@ spec:
           readinessProbe:
             httpGet: {path: /healthz, port: 8080}
           livenessProbe:
-            httpGet: {path: /healthz, port: 8080}
+            httpGet: {path: /livez, port: 8080}
             initialDelaySeconds: 10
           resources:
             requests: {cpu: 20m, memory: 32Mi}

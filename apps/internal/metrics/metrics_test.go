@@ -71,3 +71,31 @@ func TestWrapCountsInjectedErrors(t *testing.T) {
 		t.Fatalf("200 count: got %v, want 1", got)
 	}
 }
+
+func TestWrapCreatesErrorSeriesAtZero(t *testing.T) {
+	Wrap("POST /fresh", http.NotFoundHandler())
+	mfs, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]float64{}
+	for _, mf := range mfs {
+		if mf.GetName() != "http_server_requests_total" {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			l := map[string]string{}
+			for _, lp := range m.GetLabel() {
+				l[lp.GetName()] = lp.GetValue()
+			}
+			if l["route"] == "POST /fresh" && l["method"] == "POST" {
+				seen[l["code"]] = m.GetCounter().GetValue()
+			}
+		}
+	}
+	for _, code := range []string{"500", "502", "503"} {
+		if v, ok := seen[code]; !ok || v != 0 {
+			t.Fatalf("code %s: series present=%v value=%v, want present at 0", code, ok, v)
+		}
+	}
+}
