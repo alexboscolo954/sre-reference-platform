@@ -42,12 +42,14 @@ spec:
       description: "Checkout requests served in under 300ms."
       sli:
         events:
-          # Slow = all requests minus those in the 0.3s bucket.
+          # Slow = successful requests minus those in the 0.3s bucket. Failed requests belong to
+          # availability: counted here too, a database outage also burned the latency budget
+          # (GameDay 0002). The 200 series is created at zero on start, see availability.
           errorQuery: |
-            sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}]))
+            sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout",code=~"2.."}[{{.window}}]))
             -
-            sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[{{.window}}]))
-          totalQuery: sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}])) > 0 # see availability
+            sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",code=~"2..",le="0.3"}[{{.window}}]))
+          totalQuery: sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout",code=~"2.."}[{{.window}}])) > 0 # see availability
       alerting:
         name: CheckoutLatencyBudgetBurn
         annotations:
