@@ -87,8 +87,11 @@ func main() {
 			return
 		}
 		out := map[string]int64{"order_id": id}
-		// The order is already in Postgres; a Valkey outage only loses the counter.
-		if total, err := vk.Do(r.Context(), vk.B().Incr().Key("orders_total").Build()).AsInt64(); err != nil {
+		// The order is already in Postgres; a Valkey outage only loses the counter. Bounded, because a
+		// dial to a dead node otherwise hangs past storefront's 5s timeout and a saved order is answered 502 (GameDay 0001).
+		vctx, cancel := context.WithTimeout(r.Context(), 200*time.Millisecond)
+		defer cancel()
+		if total, err := vk.Do(vctx, vk.B().Incr().Key("orders_total").Build()).AsInt64(); err != nil {
 			slog.WarnContext(r.Context(), "orders_total not incremented", "err", err)
 		} else {
 			out["orders_total"] = total
