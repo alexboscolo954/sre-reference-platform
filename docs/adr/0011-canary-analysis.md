@@ -108,9 +108,13 @@ request counters.
   changed in both files.
 - **An aborted Rollout stays Degraded until git is reverted.** Here that took
   2m11s from the push, most of it Argo CD's poll interval.
-- **Unresolved: three storefront 503s after the good promotion.** All three
-  came from one storefront pod within about 40 seconds of 14:18:08, and
-  checkout logged no 5xx for them. That is the same shape as ADR 0010's
+- **Three storefront 503s after the good promotion, resolved in ADR 0012.**
+  All three came from one storefront pod within about 40 seconds of 14:18:08,
+  and checkout logged no 5xx for them. That is the same shape as ADR 0010's
   promotion 503s, at a much smaller size (ADR 0010's release 5 had 0 of
-  14400). Not investigated. One untested guess is the old ReplicaSet scaling
-  down 30s after promotion.
+  14400). The guess written here, the old ReplicaSet scaling down 30s after
+  promotion, was wrong. ADR 0012 found the cause: Cilium's GAMMA Envoy kept
+  each upstream connection, bound to storefront's source port, open for 60s,
+  and a reused port routed to the promoted pod collided with the canary
+  pool's connection. With a 2s upstream idle timeout, the next two releases
+  had none (ADR 0012 calls that a small sample).
