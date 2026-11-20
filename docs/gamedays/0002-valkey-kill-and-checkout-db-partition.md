@@ -51,3 +51,58 @@ Hypothesis:
 - After the run: Prometheus (`ALERTS`, SLI recording rules), Alertmanager `/api/v2/alerts`, events, checkout logs (`orders_total not incremented`), previous container logs if any restarted.
 
 Abort: if the system has not recovered 5 minutes after a fault ends, stop load and record the state as it is.
+
+## Observations
+
+Both runs on one fresh cluster, 2026-11-20 ([run A](../evidence/gameday2-run-a.md), [run B](../evidence/gameday2-run-b.md)). Run B started at 17:52 rather than 5 minutes after A, so that the 1h availability window no longer held run A's start-up artifact (contributing factor 1). Alerts were read from Prometheus `ALERTS` and Alertmanager `/api/v2/alerts`.
+
+### Impact
+
+| Run | Fault | Failed requests (k6) | Error window | Alerts |
+|---|---|---|---|---|
+| A | Valkey pod killed 16:52:57 | 0 of 12000 | none | availability page 16:51:30 and ticket from 17:02, both before or unrelated to the fault |
+| B | checkout cut off from shop-db 17:55:14 - 17:57:14 | 2358 of 11921 (19.78%) | 17:55:14 - 17:57:16 (2m02s) | availability page (Alertmanager 17:56:23, receiver `slack`), latency ticket |
+
+### Scenario A against the hypothesis
+
+| # | Hypothesis | Result | What was observed |
+|---|---|---|---|
+| A1 | New Valkey pod Ready within 20s | Held | Replacement on the same node, Ready at 16:52:58, about 1s after the kill |
+| A2 | No order fails | Held | 0 of 12000 failed |
+| A3 | Each `INCR` fails within 200ms, no request over 300ms | Held | 7 `EOF`, 25 `connection refused` to the `valkey` ClusterIP. 0 checkout requests over 300ms |
+| A4 | One warning per order in the gap, none after the new endpoint | Wrong detail | 32 warnings in 1.6s (about 20/s), the last about 1s after the recorder saw the new endpoint Ready |
+| A5 | `orders_total` restarts from 0, ends below Postgres by the orders before the kill plus the gap | Held | 8365 against 12000: about 3603 before the kill plus 32 |
+| A6 | Checkout stays Ready, no `Checkout*` alert pending | Wrong | Checkout Ready throughout, 0 restarts. But `CheckoutAvailabilityBudgetBurn` paged at 16:51:30, 87s before the kill, with no failed request, and its ticket has been active since 17:02 |
+
+### Scenario B against the hypothesis
+
+| # | Hypothesis | Result | What was observed |
+|---|---|---|---|
+| B1 | Pooled connections are cut too, no `INSERT` answered from the first second | Held | Postgres order count stopped at 15597 at 17:55:14 and moved again at 17:57:16 |
+| B2 | Requests hang until storefront's 5s timeout, 502, dropped iterations | Held | 494 x `502 ... Client.Timeout exceeded`, 17:55:19 - 17:55:48. 100 VUs, 80 dropped iterations |
+| B3 | Readiness fails by timeout, both pods out 20 to 30s in, no restarts | Held | Not ready at 17:55:40 and 17:55:42 (26s, 28s), `context deadline exceeded`, 0 restarts |
+| B4 | Envoy `503 no healthy upstream` until the partition ends | Held | 1864 x 503, 17:55:42 - 17:57:16 |
+| B5 | Ready within 10s of the end, pgxpool recovers | Held | Ready at 17:57:16 and 17:57:21 (2s and 7s after `TimeUp`), orders resumed at 17:57:16 |
+| B6 | About 2m10s of failures, about 2600, about 500 of them 502 | Held | 2m02s, 2358, of which 494 were 502 |
+| B7 | At most a few orders committed but answered as errors | Held | None: Postgres +9563, k6 200s 9563 |
+| B8 | CNPG sees nothing | Held | Primary shop-db-1, 3 ready throughout, no restarts |
+| B9 | Availability pages, latency does not | Held, narrowly | Page at 17:56:23. Latency 5m SLI peaked at 0.143 against a page threshold of 0.144, and the latency ticket fired, which was not predicted |
+
+## Contributing factors
+
+Only failures that happened in the two runs.
+
+1. **The Gateway availability SLI pages when traffic starts on an idle Envoy** (run A). Envoy's `upstream_rq_completed` exists at 0 from start-up; the `upstream_rq_xx` class 2 series is created by the first 2xx response. `rate()` sees the step from 0 in `completed` but not in class 2, so the first scrape interval of successes counts as errors: both windows read 1.0 at 16:51:00 and the page fired with no failed request. The ticket stayed active because the 6h window still holds it. The same `rate()` mismatch then pushed the 5m SLI between -0.16 and +0.037 until the window passed the series start. This is GameDay 0001's fix 1: written to count a first 5xx, it miscounts a first 2xx.
+2. **Checkout's `INSERT` has no timeout of its own** (run B). Until readiness removed both pods (26 to 28s), every request waited for storefront's 5s client timeout: 494 failed slowly instead of at once, k6 needed all 100 VUs and dropped 80 iterations, and checkout recorded about 520 requests over 300ms. That brought the latency 5m SLI to 0.143, 0.001 under paging, and fired the latency ticket for an outage that was about availability.
+
+Run B's two-phase shape (slow 502s, then fast 503s) is also the price of readiness at the default period: the 26 to 28s before the pods left the endpoints is three probe failures at 10s.
+
+## Fixes and re-runs
+
+Pending: fixes and re-runs not done yet.
+
+### What is left
+
+## Not explained
+
+- Chaos Mesh reported the partition as applied to the three shop-db pods as well as to checkout, with direction `to`. Replication was not affected (3 ready throughout), and what it installed there was not read.
