@@ -16,12 +16,12 @@ spec:
   - name: sloth-slo-sli-recordings-checkout-requests-availability
     rules:
     - expr: |
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[5m]))
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 5m or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
         -
-        (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[5m])) or vector(0))
+        (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset 5m or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
         )
         /
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[5m])) > 0)
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 5m or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -29,12 +29,12 @@ spec:
         sloth_window: 5m
       record: slo:sli_error:ratio_rate5m
     - expr: |
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[30m]))
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 30m or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
         -
-        (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[30m])) or vector(0))
+        (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset 30m or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
         )
         /
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[30m])) > 0)
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 30m or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -42,12 +42,12 @@ spec:
         sloth_window: 30m
       record: slo:sli_error:ratio_rate30m
     - expr: |
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[1h]))
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 1h or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
         -
-        (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[1h])) or vector(0))
+        (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset 1h or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
         )
         /
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[1h])) > 0)
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 1h or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -55,12 +55,12 @@ spec:
         sloth_window: 1h
       record: slo:sli_error:ratio_rate1h
     - expr: |
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[2h]))
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 2h or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
         -
-        (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[2h])) or vector(0))
+        (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset 2h or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
         )
         /
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[2h])) > 0)
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 2h or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -68,12 +68,12 @@ spec:
         sloth_window: 2h
       record: slo:sli_error:ratio_rate2h
     - expr: |
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[6h]))
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 6h or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
         -
-        (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[6h])) or vector(0))
+        (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset 6h or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
         )
         /
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[6h])) > 0)
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 6h or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -81,12 +81,12 @@ spec:
         sloth_window: 6h
       record: slo:sli_error:ratio_rate6h
     - expr: |
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[1d]))
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 1d or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
         -
-        (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[1d])) or vector(0))
+        (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset 1d or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
         )
         /
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[1d])) > 0)
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 1d or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout
@@ -94,12 +94,12 @@ spec:
         sloth_window: 1d
       record: slo:sli_error:ratio_rate1d
     - expr: |
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[3d]))
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 3d or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
         -
-        (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[3d])) or vector(0))
+        (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset 3d or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
         )
         /
-        (sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[3d])) > 0)
+        (sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset 3d or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0)
       labels:
         sloth_id: checkout-requests-availability
         sloth_service: checkout

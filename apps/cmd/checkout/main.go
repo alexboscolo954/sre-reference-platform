@@ -82,7 +82,10 @@ func main() {
 			trace.SpanFromContext(r.Context()).SetAttributes(attribute.String("user.email", in.Email))
 		}
 		var id int64
-		if err := db.QueryRow(r.Context(), `INSERT INTO orders DEFAULT VALUES RETURNING id`).Scan(&id); err != nil {
+		// Bounded, so an unreachable database fails fast instead of at storefront's 5s timeout (GameDay 0002).
+		ictx, icancel := context.WithTimeout(r.Context(), time.Second)
+		defer icancel()
+		if err := db.QueryRow(ictx, `INSERT INTO orders DEFAULT VALUES RETURNING id`).Scan(&id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

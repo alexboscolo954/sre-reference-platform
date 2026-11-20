@@ -110,3 +110,25 @@ tests:
             exp_annotations:
               summary: Checkout is burning its availability error budget too fast.
               title: (ticket) checkout requests-availability SLO error budget burn rate is too fast.
+
+  # GameDay 0002 run A: Envoy idle for 3m with `completed` at 0, then 20 req/s, all 2xx. The
+  # 2xx series only appears with the first response. Nothing may fire and the SLI must stay 0.
+  - interval: 1m
+    input_series:
+      - series: 'envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}'
+        values: '0 0 0 1200+1200x30'
+      - series: 'envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class="2"}'
+        values: '_ _ _ 1200+1200x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: CheckoutAvailabilityBudgetBurn
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: CheckoutAvailabilityBudgetBurn
+        exp_alerts: []
+    promql_expr_test:
+      - expr: slo:sli_error:ratio_rate5m{sloth_slo="requests-availability"}
+        eval_time: 5m
+        exp_samples:
+          - labels: 'slo:sli_error:ratio_rate5m{sloth_id="checkout-requests-availability",sloth_service="checkout",sloth_slo="requests-availability",sloth_window="5m"}'
+            value: 0
