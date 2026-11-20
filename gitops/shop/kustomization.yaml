@@ -11,4 +11,4 @@ images:
   - name: ghcr.io/alexboscolo954/storefront
     newTag: sha-4c53c789fe61217d4ae9c4dba6d814a04c0c73df
   - name: ghcr.io/alexboscolo954/checkout
-    newTag: sha-44b32a1ac2a38b437a55cd6d247333d7cbbf1c3a
+    newTag: sha-f682409d9b7fd4c4532dea41fefb4783fc892a12

@@ -1,0 +1,16 @@
+# GameDay 2, scenario A: kills the Valkey pod once, with no grace period.
+# The Deployment should recreate it; checkout should keep answering orders without the counter.
+# Applied by hand during `make load`; delete it before re-applying, as a PodChaos fires once.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: valkey-kill
+  namespace: shop
+spec:
+  action: pod-kill
+  mode: one
+  gracePeriod: 0
+  selector:
+    namespaces: [shop]
+    labelSelectors:
+      app: valkey

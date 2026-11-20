@@ -23,12 +23,13 @@ var (
 		Help: "HTTP requests by route, method and status code.",
 	}, []string{"route", "method", "code"})
 
-	// 0.3 is the checkout latency SLO threshold.
+	// 0.3 is the checkout latency SLO threshold. "code" lets the latency SLI skip failed
+	// requests, which availability already counts (GameDay 0002).
 	duration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "http_server_request_duration_seconds",
-		Help:    "HTTP request duration by route and method.",
+		Help:    "HTTP request duration by route, method and status code.",
 		Buckets: []float64{0.025, 0.05, 0.1, 0.2, 0.3, 0.5, 1, 2.5, 5},
-	}, []string{"route", "method"})
+	}, []string{"route", "method", "code"})
 )
 
 type recorder struct {
@@ -49,12 +50,14 @@ func Wrap(route string, h http.Handler) http.Handler {
 	for _, code := range []string{"200", "500", "502", "503"} {
 		requests.WithLabelValues(route, method, code)
 	}
+	duration.WithLabelValues(route, method, "200")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec := &recorder{ResponseWriter: w, code: http.StatusOK}
 		start := time.Now()
 		h.ServeHTTP(rec, r)
-		requests.WithLabelValues(route, r.Method, strconv.Itoa(rec.code)).Inc()
-		obs := duration.WithLabelValues(route, r.Method)
+		code := strconv.Itoa(rec.code)
+		requests.WithLabelValues(route, r.Method, code).Inc()
+		obs := duration.WithLabelValues(route, r.Method, code)
 		secs := time.Since(start).Seconds()
 		attrs := []any{"route", route, "method", r.Method, "code", rec.code, "duration_ms", secs * 1000}
 		// Needs otelhttp outside Wrap so the request context carries the span.

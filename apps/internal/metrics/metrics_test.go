@@ -11,6 +11,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/alexboscolo954/sre-reference-platform/apps/internal/fault"
@@ -69,6 +70,15 @@ func TestWrapCountsInjectedErrors(t *testing.T) {
 	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "/test", nil))
 	if got := testutil.ToFloat64(requests.WithLabelValues("POST /test", "POST", "200")); got != 1 {
 		t.Fatalf("200 count: got %v, want 1", got)
+	}
+	for _, code := range []string{"500", "200"} {
+		var m dto.Metric
+		if err := duration.WithLabelValues("POST /test", "POST", code).(prometheus.Metric).Write(&m); err != nil {
+			t.Fatal(err)
+		}
+		if got := m.GetHistogram().GetSampleCount(); got != 1 {
+			t.Fatalf("duration code %s: got %d observations, want 1", code, got)
+		}
 	}
 }
 

@@ -1,0 +1,23 @@
+# GameDay 2, scenario B: drops every packet from the checkout pods to the shop-db pods for 2 minutes.
+# Postgres itself stays healthy, so CNPG should not fail over; only checkout loses it.
+# Applied by hand during `make load`; ends by itself. Delete it before re-applying.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: checkout-db-partition
+  namespace: shop
+spec:
+  action: partition
+  mode: all
+  duration: 2m
+  direction: to
+  selector:
+    namespaces: [shop]
+    labelSelectors:
+      app: checkout
+  target:
+    mode: all
+    selector:
+      namespaces: [shop]
+      labelSelectors:
+        cnpg.io/cluster: shop-db

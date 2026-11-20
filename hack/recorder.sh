@@ -9,7 +9,7 @@ T='(now|strftime("%H:%M:%S"))'
 
 kubectl get pods -n shop -w -o json | jq --unbuffered -c "{t:$T, pod:.metadata.name, role:.metadata.labels[\"cnpg.io/instanceRole\"], hash:.metadata.labels[\"rollouts-pod-template-hash\"], phase:.status.phase, ready:([.status.conditions[]?|select(.type==\"Ready\")|.status]|first), deleting:(.metadata.deletionTimestamp!=null), ip:.status.podIP, node:.spec.nodeName}" > "$out/pods.log" &
 w1=$!
-kubectl get endpointslices -n shop -w -o json | jq --unbuffered -c "select((.metadata.labels[\"kubernetes.io/service-name\"] // \"\")|test(\"^(checkout|shop-db-rw)\")) | {t:$T, svc:.metadata.labels[\"kubernetes.io/service-name\"], eps:[.endpoints[]?|\"\(.addresses[0]) ready=\(.conditions.ready) serving=\(.conditions.serving) term=\(.conditions.terminating)\"]}" > "$out/eps.log" &
+kubectl get endpointslices -n shop -w -o json | jq --unbuffered -c "select((.metadata.labels[\"kubernetes.io/service-name\"] // \"\")|test(\"^(checkout|shop-db-rw|valkey)\")) | {t:$T, svc:.metadata.labels[\"kubernetes.io/service-name\"], eps:[.endpoints[]?|\"\(.addresses[0]) ready=\(.conditions.ready) serving=\(.conditions.serving) term=\(.conditions.terminating)\"]}" > "$out/eps.log" &
 w2=$!
 kubectl get rollout checkout -n shop -w -o json | jq --unbuffered -c "{t:$T, phase:.status.phase, step:.status.currentStepIndex, stable:.status.stableRS, current:.status.currentPodHash, msg:(.status.message // \"\")}" > "$out/rollout.log" &
 w3=$!
@@ -35,9 +35,13 @@ sf=$(kubectl get pods -n shop -l app=storefront -o jsonpath='{.items[*].metadata
 envoys=$(kubectl get pods -n kube-system -l k8s-app=cilium-envoy -o json | jq -r '.items[] | "\(.metadata.name)@\(.spec.nodeName)"')
 keep='upstream_(cx_connect_fail|cx_connect_timeout|cx_destroy_local_with_active_rq|cx_destroy_remote_with_active_rq|cx_none_healthy|rq_pending_failure_eject|rq_pending_overflow|rq_rx_reset|rq_tx_reset|rq_timeout|rq_retry|cx_total|rq_total)\{'
 
+# Orders committed, once per second. Resolved once: after a failover this keeps asking the old primary.
+pg=$(kubectl get cluster shop-db -n shop -o jsonpath='{.status.currentPrimary}')
+
 end=$((SECONDS+max)); promoted=0
 while [ $SECONDS -lt $end ]; do
   t=$(date -u +%H:%M:%S)
+  echo "$t $(kubectl exec -n shop "$pg" -c postgres -- psql -tAc 'SELECT count(*) FROM orders' app 2>&1 | tail -1)" >> "$out/orders.log"
   for s in $sf; do
     kubectl get --request-timeout=2s --raw "/api/v1/namespaces/shop/pods/$s:9090/proxy/metrics" 2>/dev/null | awk -v t="$t" -v p="$s" '/^http_server_requests_total/ {print t, p, $0}' >> "$out/storefront.log"
   done

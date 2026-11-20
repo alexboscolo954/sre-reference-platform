@@ -17,17 +17,20 @@ spec:
           # checkout's own counters missed both outages (Envoy rejected requests before they
           # reached it, and liveness killed pods before their errors were scraped).
           # "completed" counts every response, Envoy's own 503s included. Errors are what is left
-          # after 2xx-4xx, because Envoy creates the 5xx series at the first error and rate()
-          # cannot see the step to its first sample. A first 4xx is counted as an error for one
-          # scrape in the same way; that is the price of seeing every first 5xx.
+          # after 2xx-4xx. Envoy creates each class series at its first response, so rate() would
+          # miss the step to the first sample: a first 5xx would go unseen and, on an idle Envoy,
+          # the first 2xx would count as errors (GameDay 0002 paged with no failed request). So
+          # each counter is a delta over the window, with a series that has no sample a window
+          # ago counted from 0. clamp_min: an Envoy restart resets the counter and drops that
+          # pod's counts until the window passes it.
           errorQuery: |
-            sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[{{.window}}]))
+            sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset {{.window}} or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0))
             -
-            (sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"}[{{.window}}])) or vector(0))
+            (sum(clamp_min(envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} - (envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} offset {{.window}} or envoy_cluster_upstream_rq_xx{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80",envoy_response_code_class=~"2|3|4"} * 0), 0)) or vector(0))
           # "> 0": with no traffic the SLI is 0/0 = NaN, and one NaN sample turns Sloth's 30d
           # average (sum_over_time / count_over_time of the 5m SLI) into NaN for 30 days.
           # Dropping idle samples averages only over time with traffic.
-          totalQuery: sum(rate(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"}[{{.window}}])) > 0
+          totalQuery: sum(clamp_min(envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} - (envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} offset {{.window}} or envoy_cluster_upstream_rq_completed{envoy_cluster_name="gateway/cilium-gateway-shared/shop_storefront_80"} * 0), 0)) > 0
       alerting:
         name: CheckoutAvailabilityBudgetBurn
         annotations:
@@ -39,12 +42,14 @@ spec:
       description: "Checkout requests served in under 300ms."
       sli:
         events:
-          # Slow = all requests minus those in the 0.3s bucket.
+          # Slow = successful requests minus those in the 0.3s bucket. Failed requests belong to
+          # availability: counted here too, a database outage also burned the latency budget
+          # (GameDay 0002). The 200 series is created at zero on start, see availability.
           errorQuery: |
-            sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}]))
+            sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout",code=~"2.."}[{{.window}}]))
             -
-            sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",le="0.3"}[{{.window}}]))
-          totalQuery: sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout"}[{{.window}}])) > 0 # see availability
+            sum(rate(http_server_request_duration_seconds_bucket{namespace="shop",route="POST /checkout",code=~"2..",le="0.3"}[{{.window}}]))
+          totalQuery: sum(rate(http_server_request_duration_seconds_count{namespace="shop",route="POST /checkout",code=~"2.."}[{{.window}}])) > 0 # see availability
       alerting:
         name: CheckoutLatencyBudgetBurn
         annotations:
