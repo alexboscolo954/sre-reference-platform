@@ -43,3 +43,13 @@ only inside the cluster. The same layout must work on kind and on EKS.
 - The age key is in the cluster as a plain Secret. Fine for a laptop; on EKS it
   should come from a cloud KMS instead (SOPS supports both side by side).
 - Argo's initial admin secret is left in place for now.
+- **Accepted risk: Argo applies whatever is pushed, with no review gate**
+  (raised by automated security reviews on 2026-11-10, 11-13 and 11-14). While
+  a branch is tested, root and every child Application track it, with prune and
+  self-heal, under the unrestricted `default` AppProject, and `main` has no
+  branch protection. Anyone who can push gets cluster-admin-equivalent changes.
+  Accepted because the repo has one collaborator, a stolen token could push to
+  `main` just as well, and the cluster is a short-lived laptop lab with demo
+  secrets. Revisit before anyone else gets push access or before the EKS target:
+  a restricted AppProject (`sourceRepos`, `destinations`,
+  `clusterResourceWhitelist`) and a protected `main`.
