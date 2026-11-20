@@ -1,6 +1,6 @@
 # GameDay 0002: Valkey kill and checkout-to-Postgres partition
 
-Status: hypotheses written 2026-11-20, before any run, and left unchanged. Everything from "Observations" on was written afterwards, from [`docs/evidence/gameday2-*.md`](../evidence/).
+Status: hypotheses written 2026-11-20, before any run, and left unchanged. Everything from "Observations" on was written afterwards, from [`docs/evidence/gameday2-*.md`](../evidence/). Fixes were deployed and re-run the same day: [`docs/evidence/gameday2-reruns.md`](../evidence/gameday2-reruns.md).
 
 ## Steady state
 
@@ -92,17 +92,42 @@ Both runs on one fresh cluster, 2026-11-20 ([run A](../evidence/gameday2-run-a.m
 
 Only failures that happened in the two runs.
 
-1. **The Gateway availability SLI pages when traffic starts on an idle Envoy** (run A). Envoy's `upstream_rq_completed` exists at 0 from start-up; the `upstream_rq_xx` class 2 series is created by the first 2xx response. `rate()` sees the step from 0 in `completed` but not in class 2, so the first scrape interval of successes counts as errors: both windows read 1.0 at 16:51:00 and the page fired with no failed request. The ticket stayed active because the 6h window still holds it. The same `rate()` mismatch then pushed the 5m SLI between -0.16 and +0.037 until the window passed the series start. This is GameDay 0001's fix 1: written to count a first 5xx, it miscounts a first 2xx.
-2. **Checkout's `INSERT` has no timeout of its own** (run B). Until readiness removed both pods (26 to 28s), every request waited for storefront's 5s client timeout: 494 failed slowly instead of at once, k6 needed all 100 VUs and dropped 80 iterations, and checkout recorded about 520 requests over 300ms. That brought the latency 5m SLI to 0.143, 0.001 under paging, and fired the latency ticket for an outage that was about availability.
+1. **The Gateway availability SLI pages when traffic starts on an idle Envoy** (run A). Envoy's `upstream_rq_completed` exists at 0 from start-up; the `upstream_rq_xx` class 2 series is created by the first 2xx response. `rate()` sees the step from 0 in `completed` but not in class 2, so the first scrape interval of successes counts as errors: both windows read 1.0 at 16:51:00 and the page fired with no failed request. The ticket was active in Alertmanager from 17:02:23 through at least 18:06, with no failed request before run B's fault at 17:55. The same `rate()` mismatch then pushed the 5m SLI between -0.16 and +0.037 until the window passed the series start. This is GameDay 0001's fix 1: written to count a first 5xx, it miscounts a first 2xx.
+2. **Checkout's `INSERT` has no timeout of its own** (run B). Until readiness removed both pods (26 to 28s), every request waited for storefront's 5s client timeout: 494 failed slowly instead of at once, and k6 needed all 100 VUs and dropped 80 iterations. Checkout recorded about 520 requests over 300ms; the latency 5m SLI reached 0.143, 0.001 under paging, and the latency ticket fired. B2 showed the timeout was not the cause of that (factor 3).
 
 Run B's two-phase shape (slow 502s, then fast 503s) is also the price of readiness at the default period: the 26 to 28s before the pods left the endpoints is three probe failures at 10s.
 
 ## Fixes and re-runs
 
-Pending: fixes and re-runs not done yet.
+Each fix maps to a factor and was checked by re-running the scenario that showed it, same load, manifest and timing ([evidence](../evidence/gameday2-reruns.md)). A2 and B3 each ran as the first load on a fresh cluster, the condition that produced factor 1.
+
+| # | Fix | Factor | Check | Result |
+|---|---|---|---|---|
+| 1 | Availability SLI counters as deltas over the window (`x - (x offset w or x * 0)`, `clamp_min` 0), so a series created inside the window counts from 0. promtool test added for run A's shape; it fails on the old query | 1 | Re-run A on a fresh cluster: no alert before the fault | Held. A2 and B3: SLI 0 at every point before the fault, no `Checkout*` alert. Same start-up shape as A (`completed` at 0, class 2 created at the first response). On run B's data the new query reads 0.398 at the peak against 0.443, closer to k6's 2358 failures in the window |
+| 2 | Bound checkout's `INSERT` to 1s | 2 | Re-run B: no 502 after 5s, no VU exhaustion, no latency burn | Partly. B2: 0 x 502, 619 x 500 after 1s, 21 VUs, 1 dropped iteration. Latency burn got worse (factor 3) |
+| 3 | Duration histogram labelled by `code` (200 series created at zero); latency SLI and the canary's `latency-burn` count only `code=~"2.."` | 3 | Re-run B: no latency alert, availability still pages | Held in B3: latency SLI 0 throughout, all 9141 successful requests under 300ms, availability page 53s after the fault. The canary query was not exercised by a rollout; checked by running it against B3's data with the stable hash: valid, 0 |
+
+| Run | Failed requests (k6) | Error window | Page | Latency 5m peak | Latency ticket |
+|---|---|---|---|---|---|
+| A | 0 of 12000 | none | yes, false (before the fault) | 0 | no |
+| A2 | 0 of 12001 | none | none | 0 | no |
+| B | 2358 of 11921 (19.78%) | 2m02s | 69s after the fault | 0.143 | yes |
+| B2 | 2548 of 11999 (21.23%) | 2m08s | 39s | 0.1785 | yes |
+| B3 | 2418 of 11999 (20.15%) | 2m01s | 53s | 0 | no |
+
+### Found in the re-runs
+
+3. **The latency SLI counts failed requests** (B2). With the `INSERT` bounded, requests failed after 1s instead of 5s; that is still over 300ms, and with no VUs held up checkout saw more of them (about 650 against 520). The latency 5m SLI peaked at 0.1785, over the page threshold; only the 1h window (0.039) kept it from paging. The failures were already counted by availability. Fixed by fix 3.
 
 ### What is left
 
+- While the database is unreachable every order fails: the partition was 2 minutes and the error window 2m01s to 2m08s. For the first 24 to 32s checkout answers 500 after 1s; then readiness removes both pods and Envoy answers 503. Faster readiness would only move requests from the first kind to the second.
+- An Envoy container restart resets its counters, and `clamp_min` drops that pod's counts until the SLI window passes the restart.
+- Checkout's 500 histogram series is still created at its first 500, so `increase()` undercounts it (387 against 507 in B3). No SLI reads it.
+- After the Valkey kill, `INCR` kept failing for about 1s after the new endpoint was Ready (A, A2). No order failed.
+- Not run, found with promtool after the re-runs: fix 1 counts a series from 0 when Prometheus has no sample a window ago. If Prometheus's history starts after Envoy's (an emptied TSDB, a target added late), the SLI reads the counters' lifetime totals until the window fills: lifetime counters at 5% errors gave an SLI of 0.049 at 2m, and the page fired.
+
 ## Not explained
 
+- Why the availability ticket from run A became active at about 17:02, 11 minutes after the page. The ticket windows were not queried before the cluster was deleted.
 - Chaos Mesh reported the partition as applied to the three shop-db pods as well as to checkout, with direction `to`. Replication was not affected (3 ready throughout), and what it installed there was not read.

@@ -45,7 +45,7 @@ A copy of `chaos/checkout-db-partition.yaml` named `partition-check`, duration 4
 - Checkout over 17:52:30 - 18:02:30 (Prometheus `increase`, 10m): about 9941 requests, 9421 under 300ms, 513 x 500. No 502 or 503 recorded by checkout.
 - Checkout restarts: 0. CNPG: primary shop-db-1, 3 ready throughout; the recorder saw no status change. No shop-db restarts.
 - Availability SLI 5m peaked at 0.4432 (17:58 - 18:00), 1h at 0.2749. Latency SLI 5m peaked at 0.143 (17:58), against a page threshold of 0.144 (14.4 x 1%); 1h at 0.0736.
-- Alerts (Prometheus `ALERTS`, besides Watchdog and NodeClockNotSynchronising): availability page firing 17:56:30 to the end of the query (18:06); latency ticket firing 17:56:30 - 18:06; `KubePodNotReady` pending 17:56:15 - 17:58:00, never firing. The availability ticket was firing from before the run (17:02, run A's start-up artifact).
+- Alerts (Prometheus `ALERTS`, besides Watchdog and NodeClockNotSynchronising): availability page firing 17:56:30 to the end of the query (18:06); latency ticket firing 17:56:30 - 18:06; `KubePodNotReady` pending 17:56:15 - 17:58:00, never firing. The availability ticket was firing from before the run (17:02, after run A; no request failed between run A's start and this run's fault).
 
 ## Excerpts
 
