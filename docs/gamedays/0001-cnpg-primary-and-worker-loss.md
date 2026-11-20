@@ -1,6 +1,6 @@
 # GameDay 0001: CNPG primary kill and worker node loss
 
-Status: hypotheses written 2026-11-19, before either run, and left unchanged. Both runs done the same day; everything from "Observations" on was written afterwards, from the evidence in [`docs/evidence/gameday1-run-a.md`](../evidence/gameday1-run-a.md) and [`docs/evidence/gameday1-run-b.md`](../evidence/gameday1-run-b.md).
+Status: hypotheses written 2026-11-19, before either run, and left unchanged. Both runs done the same day; everything from "Observations" on was written afterwards, from the evidence in [`docs/evidence/gameday1-run-a.md`](../evidence/gameday1-run-a.md) and [`docs/evidence/gameday1-run-b.md`](../evidence/gameday1-run-b.md). Fixes were deployed and both scenarios re-run on 2026-11-19 and 2026-11-20: [`docs/evidence/gameday1-reruns.md`](../evidence/gameday1-reruns.md).
 
 ## Steady state
 
@@ -99,16 +99,36 @@ Only failures that happened in the two runs.
 
 PDBs would not have changed either run: a pod kill and a stopped node are not evictions. Retries in storefront would not have covered a 24s failover or a 6-minute Valkey outage.
 
-## Proposed fixes
+## Fixes and re-runs
 
-Not implemented. Each one maps to a factor above and is checked by re-running the scenario that showed it.
+Each fix maps to a factor above and was checked by re-running the scenario that showed it, same load and same fault ([evidence](../evidence/gameday1-reruns.md)). A2 and B2 ran checkout and storefront `sha-4c53c78`; B3 added fix 5.
 
-| Fix | Factor | Check |
-|---|---|---|
-| Measure availability at the Gateway (Cilium Envoy, north-south), the only hop every request crosses. Create the app's 5xx label values at zero on start so the existing per-service series stay usable | 1 | Re-run A and B: the page fires; the SLI's error count is within a few requests of k6's |
-| Split probes: liveness on a process-only endpoint, readiness keeps the Postgres check | 2 | Re-run A and B: no checkout restarts |
-| Retry dependencies at start instead of exiting; readiness holds traffic until they answer | 3 | Re-run A: checkout Ready within one probe period of the new primary |
-| Make Valkey optional: a failed `INCR` no longer fails the order (it is in Postgres, and `orders_total` is a cache already reset by any Valkey restart), and readiness and start-up stop requiring Valkey | 4 | Re-run B: errors stop when the worker2 checkout leaves the endpoints (~55s), not at the 300s eviction |
+| # | Fix | Factor | Check | Result |
+|---|---|---|---|---|
+| 1 | Measure availability at the Gateway (Cilium Envoy, north-south), the only hop every request crosses (`PodMonitor` `cilium-envoy`, SLI on `envoy_cluster_upstream_rq_*` for the storefront route). Create the app's 5xx label values at zero on start so the per-service series stay usable | 1 | Re-run A and B: the page fires | Held. Alertmanager had the page 32s after the first error in A2 (23:40:35), 36s after the stop in B2 and 46s in B3, receiver `slack`. 5m SLI peaks: 0.134 (A2), 0.197 (B2), 0.154 (B3) |
+| 2 | Split probes: liveness on `/livez` (process only), readiness on `/healthz` (Postgres) | 2 | Re-run A and B: no checkout restarts | Held. 0 restarts in A2, B2, B3. In A2 one pod was unready for 10s, the other stayed Ready; in B2 and B3 the surviving pod stayed Ready |
+| 3 | Create the `orders` table in a background retry instead of exiting; readiness fails until it exists | 3 | Re-run A: checkout Ready within one probe period of the new primary | Not exercised: no checkout restarted in A2, so no start-up met a missing primary. Checked locally: with no database the process stays up, `/livez` 200, `/healthz` 503 |
+| 4 | Make Valkey optional: a failed `INCR` is logged and the order still answers 200; readiness and start-up stop requiring Valkey | 4 | Re-run B: errors stop when the worker2 checkout leaves the endpoints, not at the 300s eviction | Held. B2: last error 01:20:24, 5s after `Ready=Unknown`; 6406 `INCR` failures over the 6 minutes without Valkey, none failing an order |
+| 5 | Bound the `INCR` to 200ms | 5 | Re-run B: no order answered 502 after it was saved; no latency burn | Held in B3: no `INCR` canceled by the caller (B2: 242), no request over 300ms (B2: about 293), `CheckoutLatencyBudgetBurn` did not fire (B2: ticket for 1m) |
+
+| Run | Failed requests (k6) | Error window | Page |
+|---|---|---|---|
+| A | 647 of 12001 (5.39%) | 32s | none |
+| A2 | 450 of 12001 (3.74%) | 22s, the time `shop-db-rw` had no endpoint | yes |
+| B | 7507 of 14341 (52.34%) | 6m19s | none |
+| B2 | 737 of 14350 (5.13%) | 55s | yes |
+| B3 | 643 of 14360 (4.47%) | 50s | yes |
+
+### Found in the re-runs
+
+5. **The Valkey `INCR` had no timeout of its own** (B2). Until worker2 went NotReady, the Valkey Service still pointed at the dead pod, and each `INCR` waited on the dial until storefront's 5s client timeout cancelled the request. 242 orders were committed in Postgres and answered 502; the slow requests also fired the latency ticket. Fixed by fix 5.
+6. **Cordoning the node of the CNPG primary moves the primary.** While setting up B2, `kubectl cordon` on `sre-platform-worker` made CNPG switch over within seconds (`Current primary is running on unschedulable node`). Expected CNPG behaviour, but it means a cordon for maintenance is a write outage of a few seconds.
+
+### What is left
+
+- In B2 and B3 every remaining error (643 in B3) falls in the 45-50s between the stop and `Ready=Unknown`: Envoy timeouts to the dead storefront and storefront 5s timeouts to the dead checkout. Shorter node failure detection, or retries and outlier detection on those hops, would cut it. Not changed here.
+- In A2 every remaining error is a request during the 22s without a primary. Storefront retries would have to span that window.
+- Valkey `orders_total` restarts from 0 at every Valkey replacement (4845 against 43482 orders after B2).
 
 ## Not explained
 
